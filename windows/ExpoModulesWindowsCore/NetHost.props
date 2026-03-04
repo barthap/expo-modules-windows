@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  NetHost.props - Locates the .NET SDK's nethost headers and library.
+  Override: /p:NetHostDir=<path> pointing to the directory with nethost.h, hostfxr.h, nethost.lib.
+  Typical: C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Host.win-x64\<ver>\runtimes\win-x64\native\
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup Condition="'$(NetHostDir)' == ''">
+    <_DotNetRoot Condition="'$(DOTNET_ROOT)' != ''">$(DOTNET_ROOT)</_DotNetRoot>
+    <_DotNetRoot Condition="'$(_DotNetRoot)' == ''">C:\Program Files\dotnet</_DotNetRoot>
+    <_HostPackBase>$(_DotNetRoot)\packs\Microsoft.NETCore.App.Host.win-x64</_HostPackBase>
+  </PropertyGroup>
+
+  <!-- Glob for installed versions. MSBuild processes items in order (alphabetical),
+       so we iterate and the last assignment wins = highest version. -->
+  <Choose>
+    <When Condition="'$(NetHostDir)' == '' AND Exists('$(_HostPackBase)')">
+      <ItemGroup>
+        <_NetHostCandidate Include="$(_HostPackBase)\*\runtimes\win-x64\native\nethost.h" />
+      </ItemGroup>
+      <PropertyGroup>
+        <!-- Take the directory of the last matching nethost.h (highest version) -->
+        <NetHostDir>@(_NetHostCandidate->'%(RootDir)%(Directory)')</NetHostDir>
+      </PropertyGroup>
+    </When>
+  </Choose>
+
+</Project>

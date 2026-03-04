@@ -27,4 +27,14 @@
 #include <stdlib.h>
 #include <tchar.h>
 
+// C++ Standard Library headers used across the project
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
+#include <functional>
+#include <mutex>
+#include <memory>
+#include <cstdint>
+
 // Reference additional headers your project requires here

@@ -14,6 +14,7 @@ public static class NativeEntryPoints
     private static readonly object Lock = new();
     private static ModuleRegistry? _registry;
     private static IntPtr _eventCallbackPtr;
+    private static IntPtr _eventUserDataPtr;
 
     // ---- Initialization ----
 
@@ -133,7 +134,8 @@ public static class NativeEntryPoints
         int moduleIdx,
         byte* funcName, int funcNameLen,
         byte* argsJson, int argsLen,
-        IntPtr callbackPtr)
+        IntPtr callbackPtr,
+        IntPtr userDataPtr)
     {
         try
         {
@@ -154,63 +156,69 @@ public static class NativeEntryPoints
             argsCopy = new ReadOnlySpan<byte>(argsJson, argsLen).ToArray();
 
             // Fire and forget — callback delivers result
-            _ = InvokeAsyncCore(func, argsCopy, callbackPtr);
+            _ = InvokeAsyncCore(func, argsCopy, callbackPtr, userDataPtr);
             return 0;
         }
         catch (Exception ex)
         {
             // Deliver error via callback
-            DeliverAsyncError(callbackPtr, ex);
+            DeliverAsyncError(callbackPtr, userDataPtr, ex);
             return -1;
         }
     }
 
-    private static async Task InvokeAsyncCore(FunctionDescriptor func, byte[] argsBytes, IntPtr callbackPtr)
+    private static async Task InvokeAsyncCore(FunctionDescriptor func, byte[] argsBytes,
+        IntPtr callbackPtr, IntPtr userDataPtr)
     {
         try
         {
             var args = TypeConverter.DeserializeArgs(argsBytes, func.ParameterTypes);
             var result = await func.InvokeAsync(args);
             var resultBytes = TypeConverter.Serialize(result);
-            DeliverAsyncResult(callbackPtr, resultBytes, isError: false);
+            DeliverAsyncResult(callbackPtr, userDataPtr, resultBytes, isError: false);
         }
         catch (Exception ex)
         {
-            DeliverAsyncError(callbackPtr, ex);
+            DeliverAsyncError(callbackPtr, userDataPtr, ex);
         }
     }
 
-    private static unsafe void DeliverAsyncResult(IntPtr callbackPtr, byte[] json, bool isError)
+    private static unsafe void DeliverAsyncResult(IntPtr callbackPtr, IntPtr userDataPtr,
+        byte[] json, bool isError)
     {
         var ptr = Marshal.AllocHGlobal(json.Length);
         Marshal.Copy(json, 0, ptr, json.Length);
 
-        var callback = (delegate* unmanaged<byte*, int, int, void>)callbackPtr;
-        callback((byte*)ptr, json.Length, isError ? 1 : 0);
+        var callback = (delegate* unmanaged<byte*, int, int, IntPtr, void>)callbackPtr;
+        callback((byte*)ptr, json.Length, isError ? 1 : 0, userDataPtr);
         // Note: C++ side must call Expo_FreeBuffer on the ptr
     }
 
-    private static void DeliverAsyncError(IntPtr callbackPtr, Exception ex)
+    private static void DeliverAsyncError(IntPtr callbackPtr, IntPtr userDataPtr, Exception ex)
     {
         var error = MakeErrorJson(ex);
-        DeliverAsyncResult(callbackPtr, error, isError: true);
+        DeliverAsyncResult(callbackPtr, userDataPtr, error, isError: true);
     }
 
     // ---- Event Callback ----
 
     [UnmanagedCallersOnly(EntryPoint = "Expo_EmitEvent_SetCallback")]
-    public static void Expo_EmitEvent_SetCallback(IntPtr callbackPtr)
+    public static void Expo_EmitEvent_SetCallback(IntPtr callbackPtr, IntPtr userDataPtr)
     {
         lock (Lock)
         {
             _eventCallbackPtr = callbackPtr;
+            _eventUserDataPtr = userDataPtr;
 
             // Propagate to all modules
             if (_registry is not null)
             {
                 for (int i = 0; i < _registry.ModuleCount; i++)
                 {
-                    _registry.GetModule(i).EventCallbackPtr = callbackPtr;
+                    var module = _registry.GetModule(i);
+                    module.EventCallbackPtr = callbackPtr;
+                    module.EventUserDataPtr = userDataPtr;
+                    module.ModuleIndex = i;
                 }
             }
         }

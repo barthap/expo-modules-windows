@@ -13,6 +13,8 @@ public abstract class Module
     public AppContext? AppContext { get; internal set; }
 
     internal IntPtr EventCallbackPtr { get; set; }
+    internal IntPtr EventUserDataPtr { get; set; }
+    internal int ModuleIndex { get; set; }
 
     public abstract ModuleDefinition Definition();
 
@@ -25,13 +27,13 @@ public abstract class Module
         if (EventCallbackPtr == IntPtr.Zero)
             return;
 
-        var payload = new { name, data };
+        var payload = new { moduleIndex = ModuleIndex, name, data };
         var json = TypeConverter.Serialize(payload);
 
         fixed (byte* ptr = json)
         {
-            var callback = (delegate* unmanaged<byte*, int, void>)EventCallbackPtr;
-            callback(ptr, json.Length);
+            var callback = (delegate* unmanaged<byte*, int, IntPtr, void>)EventCallbackPtr;
+            callback(ptr, json.Length, EventUserDataPtr);
         }
     }
 
