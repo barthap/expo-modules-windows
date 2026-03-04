@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "description": "Ff",
   "source": "./src/index.tsx",
-  "main": "./lib/commonjs/index.js",
-  "module": "./lib/module/index.js",
+  "main": "./src/index.tsx",
+  "module": "./src/index.tsx",
   "exports": {
     ".": {
       "import": {
@@ -35,16 +35,15 @@
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__",
-    "!**/.*"
+    "!**/.*",
+    "windows"
   ],
   "scripts": {
     "example": "yarn workspace expo-modules-windows-core-example",
     "test": "jest",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
-    "prepare": "bob build",
-    "release": "release-it"
+    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib"
   },
   "keywords": [
     "react-native",
@@ -81,14 +80,15 @@
     "prettier": "^3.0.3",
     "react": "19.1.0",
     "react-native": "0.81.5",
-    "react-native-builder-bob": "^0.40.18",
+    "react-native-windows": "^0.81.0",
     "release-it": "^17.10.0",
     "turbo": "^1.10.7",
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
     "react": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "react-native-windows": "*"
   },
   "workspaces": [
     "example"
@@ -192,11 +192,23 @@
     "android": {
       "javaPackageName": "com.expomoduleswindowscore"
     },
-    "includesGeneratedCode": true
+    "includesGeneratedCode": true,
+    "windows": {
+      "namespace": "ExpoModulesWindowsCoreCodegen",
+      "outputDirectory": "windows/ExpoModulesWindowsCore/codegen",
+      "separateDataTypes": true
+    }
   },
   "create-react-native-library": {
     "type": "turbo-module",
     "languages": "cpp",
     "version": "0.48.9"
+  },
+  "react-native-windows": {
+    "init-windows": {
+      "name": "ExpoModulesWindowsCore",
+      "namespace": "ExpoModulesWindowsCore",
+      "template": "cpp-lib"
+    }
   }
 }
