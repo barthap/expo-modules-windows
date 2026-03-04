@@ -1,0 +1,32 @@
+# Implementation Prompts — Index
+
+Detailed prompts for each implementation step live in `docs/prompts/`.
+Use these with Plan agents or implementation agents in new sessions.
+
+## Status
+
+| # | Prompt | Status | File |
+|---|--------|--------|------|
+| — | HostFXR PoC (standalone) | **DONE** — all tests pass | `docs/HOSTFXR_POC_RESULTS.md` |
+| — | DSL Research | **DONE** | `docs/RESEARCH_DSL.md` |
+| — | Autolinking Research | **DONE** | `docs/RESEARCH_AUTOLINKING.md` |
+| 1 | C# Core Library | **TODO** — next up | `docs/prompts/01_CSHARP_CORE_LIBRARY.md` |
+| 2 | C++ ExpoModulesHostObject | TODO — needs #1 | `docs/prompts/02_CPP_HOST_OBJECT.md` |
+| 3 | Build Integration | TODO — needs #1 + #2 | `docs/prompts/03_BUILD_INTEGRATION.md` |
+| 4 | Autolinking Fork | TODO — independent | `docs/prompts/04_AUTOLINKING_FORK.md` |
+
+## Dependency Graph
+
+```
+HostFXR PoC (done) ──┐
+DSL Research (done) ──┼──→ [1] C# Core Library ──→ [2] C++ HostObject ──→ [3] Build Integration
+                      │
+Autolinking Research ─┴──→ [4] Autolinking Fork (parallel)
+```
+
+## How to Use
+
+1. Start a new session (fresh context)
+2. Read the relevant prompt file: `docs/prompts/0X_*.md`
+3. The prompt contains full context — no other reading needed
+4. Reference research docs if the agent needs more detail
