@@ -44,62 +44,59 @@ This picks the last (alphabetically highest = latest version) directory using st
 
 **Fix:** Full clean rebuild. Delete `bin/`, `obj/`, and platform-specific output directories (`x64/`, etc.), then rebuild. May need to clean 2-3 times if the first clean itself fails.
 
-## Issue 4: `nethost.dll` — Static Link Breaks MSIX Deployment
+## Issue 4: `CLASS_NOT_REGISTERED` — Missing MSIX Content Declarations
 
-**Symptom:** `CLASS_NOT_REGISTERED` crash at `ReactNativeAppBuilder().Build()` → `DispatcherQueueController::CreateOnCurrentThread()`. The crash happens before any of our module code runs.
+**Symptom:** `CLASS_NOT_REGISTERED` crash at `ReactNativeAppBuilder().Build()` → `DispatcherQueueController::CreateOnCurrentThread()`. The crash happens before any of our module code runs. Affects both `yarn react-native run-windows` and VS F5.
 
-**Root cause:** Linking `nethost.lib` (import library) adds `nethost.dll` to the DLL's import table. `nethost.dll` is part of the .NET SDK and is not redistributed in the MSIX package. When the MSIX packager deploys the app, our WinRT component DLL (`ExpoModulesWindowsCore.dll`) has an unresolvable dependency, which corrupts the package registration. This causes ALL WinRT class activations to fail — including WinAppSDK's `DispatcherQueueController`, which is needed by React Native Windows before any module code runs.
+**Root cause:** MSIX-packaged apps run from the AppX directory, not from the vcxproj output directory (`$(OutDir)`). Files must be declared as `<Content>` with `<DeploymentContent>true</DeploymentContent>` to be included in the AppX layout. Without this, files copied by post-build targets (e.g. `CopyNethost`, managed DLL copy) end up in `$(OutDir)` but are **not** in the deployed package.
 
-**Why delay-loading didn't help:** Even with `/DELAYLOAD:nethost.dll`, the DLL is still listed in the import table. The MSIX packager still detects the dependency and fails during package validation.
+The specific failure chain:
+1. `ExpoModulesWindowsCore.dll` links `nethost.lib` → `nethost.dll` is in the DLL's import table
+2. `nethost.dll` was only copied to `$(OutDir)` by a post-build target, not declared as `Content`
+3. MSIX package deploys without `nethost.dll`
+4. OS cannot load `ExpoModulesWindowsCore.dll` (missing dependency)
+5. Our DLL is registered as an in-process WinRT server in the AppxManifest → broken registration
+6. **ALL** WinRT class activations fail, including WinAppSDK's `DispatcherQueueController`
 
-**Fix:** Remove the static link to `nethost.lib` entirely. Instead of calling `get_hostfxr_path()` (from nethost), find `hostfxr.dll` directly by scanning the .NET runtime installation:
+**Why this was confusing to diagnose:**
+- The crash appeared to happen before any of our code runs (at `ReactNativeAppBuilder().Build()`)
+- The error (`CLASS_NOT_REGISTERED` on `DispatcherQueueController`) pointed to WinAppSDK, not our code
+- The actual cause was our DLL's broken registration poisoning the entire package
+- Delay-loading `nethost.dll` didn't help because the DLL is still in the import table and the MSIX packager still can't find it
 
-```cpp
-static std::wstring FindHostFxrPath() {
-    namespace fs = std::filesystem;
-    std::wstring dotnetRoot;
-    wchar_t* envRoot = nullptr;
-    size_t envLen = 0;
-    if (_wdupenv_s(&envRoot, &envLen, L"DOTNET_ROOT") == 0 && envRoot) {
-        dotnetRoot = envRoot;
-        free(envRoot);
-    }
-    if (dotnetRoot.empty())
-        dotnetRoot = L"C:\\Program Files\\dotnet";
+**Why dynamic hostfxr loading appeared to fix it:** Removing `nethost.lib` from the linker removed `nethost.dll` from the import table entirely, so `ExpoModulesWindowsCore.dll` could load without it. This masked the real issue (missing Content declarations) rather than fixing it.
 
-    auto fxrDir = fs::path(dotnetRoot) / L"host" / L"fxr";
-    if (!fs::exists(fxrDir)) return {};
-
-    std::wstring latestVersion;
-    for (const auto& entry : fs::directory_iterator(fxrDir))
-        if (entry.is_directory()) {
-            auto name = entry.path().filename().wstring();
-            if (name > latestVersion) latestVersion = name;
-        }
-    if (latestVersion.empty()) return {};
-    return (fxrDir / latestVersion / L"hostfxr.dll").wstring();
-}
+**Actual fix:** Declare all non-C++ files as `Content` with `DeploymentContent=true`:
+```xml
+<!-- In deploy targets (e.g. ExpoExampleDeploy.targets) -->
+<ItemGroup>
+  <Content Include="path\to\nethost.dll">
+    <Link>nethost.dll</Link>
+    <DeploymentContent>true</DeploymentContent>
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </Content>
+  <Content Include="path\to\managed\Expo.Modules.Core.dll">
+    <Link>managed\Expo.Modules.Core.dll</Link>
+    <DeploymentContent>true</DeploymentContent>
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </Content>
+</ItemGroup>
 ```
 
-**vcxproj changes:**
-- Remove `nethost.lib` from `<AdditionalDependencies>`
-- Remove `$(NetHostDir)` from `<AdditionalLibraryDirectories>`
-- Remove the `CopyNethost` target
-- Keep `NetHost.props` import (still needed for `hostfxr.h` and `coreclr_delegates.h` header include paths)
+**Key rule for MSIX projects:** Any file that needs to be available at runtime must be declared as `Content` with `DeploymentContent=true`. Post-build copy targets (`<Copy>`) only place files in `$(OutDir)`, which is **not** where the app runs from when deployed as MSIX.
 
-## Issue 5: VS F5 Deployment — Pre-existing RNW Issue
+## Issue 5: VS F5 Deployment — Unreliable
 
-**Symptom:** `CLASS_NOT_REGISTERED` crash when launching via VS F5 (MSIX debug deployment), even on commits that were previously working.
+**Symptom:** `CLASS_NOT_REGISTERED` crash persists with VS F5 even after Content declarations are correct, while `yarn react-native run-windows` works.
 
-**Root cause:** This is a pre-existing React Native Windows / Visual Studio MSIX deployment issue, **not caused by our code**. The MSIX package registration becomes stale or corrupted. `Remove-AppxPackage` + clean rebuild does not reliably fix it.
+**Status:** Unresolved. Likely a stale MSIX registration issue in VS's deployment pipeline. `Remove-AppxPackage` + clean rebuild does not reliably fix it.
 
-**Workaround:** Use `yarn react-native run-windows` instead of VS F5. This uses a different deployment path that works reliably.
-
-**Discovery:** During bisection, commit `07f9aae` (previously confirmed working) started crashing with VS F5. Switching to `yarn react-native run-windows` confirmed the app works fine on all commits.
+**Workaround:** Use `yarn react-native run-windows` for development and testing.
 
 ## Key Takeaways
 
-1. **Never statically link nethost.lib** in a WinRT component DLL that ships in an MSIX package. Use dynamic hostfxr discovery instead.
-2. **Always test with `yarn react-native run-windows`**, not VS F5. VS MSIX deployment is unreliable for this project.
+1. **MSIX Content declarations are mandatory.** Any file the app needs at runtime (DLLs, config files, etc.) must be declared as `<Content>` with `<DeploymentContent>true</DeploymentContent>`. Post-build `<Copy>` targets are not sufficient — they only copy to `$(OutDir)`, not the AppX layout.
+2. **A broken in-process WinRT server DLL poisons the entire package.** If your DLL is registered in the AppxManifest and can't be loaded (missing dependencies), ALL WinRT activations fail — even for unrelated system classes.
 3. **CppWinRT cycle errors are transient** — clean rebuild (possibly multiple times) resolves them.
 4. **MSBuild property evaluation** happens before targets run. Properties needed for `AdditionalIncludeDirectories` must use static property functions, not target-based resolution.
+5. **Use `yarn react-native run-windows`** instead of VS F5 for reliable testing.
