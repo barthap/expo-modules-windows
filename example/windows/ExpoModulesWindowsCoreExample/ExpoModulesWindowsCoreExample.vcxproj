@@ -129,6 +129,7 @@
   </ImportGroup>
   <ItemGroup>
   </ItemGroup>
+  <Import Project="ExpoExampleDeploy.targets" />
   <Target Name="EnsureReactNativeWindowsTargets" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references targets in your node_modules\react-native-windows folder. The missing file is {0}.</ErrorText>

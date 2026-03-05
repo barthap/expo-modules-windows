@@ -1,0 +1,113 @@
+{
+  "version": 3,
+  "targets": {
+    "net9.0-windows10.0.19041": {
+      "Expo.Modules.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/Expo.Modules.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Expo.Modules.Core.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Expo.Modules.Core/1.0.0": {
+      "type": "project",
+      "path": "../../../dotnet/Expo.Modules.Core/Expo.Modules.Core.csproj",
+      "msbuildProject": "../../../dotnet/Expo.Modules.Core/Expo.Modules.Core.csproj"
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net9.0-windows10.0.19041": [
+      "Expo.Modules.Core >= 1.0.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\Barthap\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "D:\\dev\\expo-modules-windows-core\\example\\modules\\ExampleModule\\ExampleModule.csproj",
+      "projectName": "ExampleModules",
+      "projectPath": "D:\\dev\\expo-modules-windows-core\\example\\modules\\ExampleModule\\ExampleModule.csproj",
+      "packagesPath": "C:\\Users\\Barthap\\.nuget\\packages\\",
+      "outputPath": "D:\\dev\\expo-modules-windows-core\\example\\modules\\ExampleModule\\obj\\",
+      "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "D:\\dev\\expo-modules-windows-core\\example\\NuGet.Config",
+        "D:\\dev\\expo-modules-windows-core\\NuGet.Config",
+        "C:\\Users\\Barthap\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net9.0-windows10.0.19041.0"
+      ],
+      "sources": {
+        "https://api.nuget.org/v3/index.json": {},
+        "https://pkgs.dev.azure.com/ms/react-native/_packaging/react-native-public/nuget/v3/index.json": {}
+      },
+      "frameworks": {
+        "net9.0-windows10.0.19041": {
+          "targetAlias": "net9.0-windows10.0.19041.0",
+          "projectReferences": {
+            "D:\\dev\\expo-modules-windows-core\\dotnet\\Expo.Modules.Core\\Expo.Modules.Core.csproj": {
+              "projectPath": "D:\\dev\\expo-modules-windows-core\\dotnet\\Expo.Modules.Core\\Expo.Modules.Core.csproj"
+            }
+          }
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.300"
+    },
+    "frameworks": {
+      "net9.0-windows10.0.19041": {
+        "targetAlias": "net9.0-windows10.0.19041.0",
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.Windows.SDK.NET.Ref",
+            "version": "[10.0.19041.57, 10.0.19041.57]"
+          }
+        ],
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.Windows.SDK.NET.Ref.Windows": {
+            "privateAssets": "all"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.311/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

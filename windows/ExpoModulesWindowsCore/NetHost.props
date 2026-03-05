@@ -12,18 +12,13 @@
     <_HostPackBase>$(_DotNetRoot)\packs\Microsoft.NETCore.App.Host.win-x64</_HostPackBase>
   </PropertyGroup>
 
-  <!-- Glob for installed versions. MSBuild processes items in order (alphabetical),
-       so we iterate and the last assignment wins = highest version. -->
-  <Choose>
-    <When Condition="'$(NetHostDir)' == '' AND Exists('$(_HostPackBase)')">
-      <ItemGroup>
-        <_NetHostCandidate Include="$(_HostPackBase)\*\runtimes\win-x64\native\nethost.h" />
-      </ItemGroup>
-      <PropertyGroup>
-        <!-- Take the directory of the last matching nethost.h (highest version) -->
-        <NetHostDir>@(_NetHostCandidate->'%(RootDir)%(Directory)')</NetHostDir>
-      </PropertyGroup>
-    </When>
-  </Choose>
+  <!-- Use static property functions to find the latest version directory.
+       GetDirectories returns alphabetically sorted; we pick the last = highest version. -->
+  <PropertyGroup Condition="'$(NetHostDir)' == '' AND Exists('$(_HostPackBase)')">
+    <_NetHostVersionDirs>$([System.String]::Join(';', $([System.IO.Directory]::GetDirectories('$(_HostPackBase)'))))</_NetHostVersionDirs>
+    <_NetHostLatestVersionDir Condition="!$(_NetHostVersionDirs.Contains(';'))">$(_NetHostVersionDirs)</_NetHostLatestVersionDir>
+    <_NetHostLatestVersionDir Condition="$(_NetHostVersionDirs.Contains(';'))">$(_NetHostVersionDirs.Substring($([MSBuild]::Add($(_NetHostVersionDirs.LastIndexOf(';')), 1))))</_NetHostLatestVersionDir>
+    <NetHostDir>$(_NetHostLatestVersionDir)\runtimes\win-x64\native\</NetHostDir>
+  </PropertyGroup>
 
 </Project>

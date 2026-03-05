@@ -126,6 +126,9 @@ bool ExpoModuleHost::ResolveExports(const std::wstring& assemblyPath) {
     ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_EmitEvent_SetCallback", &m_expoSetEventCallback);
     ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_FreeBuffer", &m_expoFreeBuffer);
 
+    // Expo_DiscoverModules is optional — don't fail if absent
+    resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_DiscoverModules", &m_expoDiscoverModules);
+
     return ok;
 }
 
@@ -163,7 +166,7 @@ void ExpoModuleHost::ParseModuleDefinitions(const uint8_t* json, int len) {
 // ---- Full initialization sequence ----
 
 void ExpoModuleHost::Initialize(const std::wstring& assemblyDir,
-                                const std::string& moduleTypesJson) {
+                                const std::wstring& providerAssemblyPath) {
     if (m_initialized) return;
 
     namespace fs = std::filesystem;
@@ -185,7 +188,34 @@ void ExpoModuleHost::Initialize(const std::wstring& assemblyDir,
         throw std::runtime_error("ExpoModuleHost: failed to resolve C# exports");
     }
 
-    // Step 4: Call Expo_Initialize with module type names
+    // Step 4: Discover modules from provider assembly, or use empty list
+    std::string moduleTypesJson = "[]";
+    if (!providerAssemblyPath.empty() && m_expoDiscoverModules) {
+        // Convert wide path to UTF-8
+        int utf8Len = WideCharToMultiByte(CP_UTF8, 0, providerAssemblyPath.c_str(),
+            static_cast<int>(providerAssemblyPath.size()), nullptr, 0, nullptr, nullptr);
+        std::string pathUtf8(utf8Len, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, providerAssemblyPath.c_str(),
+            static_cast<int>(providerAssemblyPath.size()), pathUtf8.data(), utf8Len, nullptr, nullptr);
+
+        uint8_t* discoveredJson = nullptr;
+        int discoveredLen = 0;
+        int drc = m_expoDiscoverModules(
+            reinterpret_cast<uint8_t*>(pathUtf8.data()),
+            static_cast<int>(pathUtf8.size()),
+            &discoveredJson, &discoveredLen);
+
+        if (drc == 0 && discoveredJson) {
+            moduleTypesJson = std::string(reinterpret_cast<char*>(discoveredJson), discoveredLen);
+            m_expoFreeBuffer(discoveredJson);
+            OutputDebugStringA(("ExpoModuleHost: discovered modules: " + moduleTypesJson + "\n").c_str());
+        } else {
+            OutputDebugStringA("ExpoModuleHost: Expo_DiscoverModules failed, using empty module list\n");
+            if (discoveredJson) m_expoFreeBuffer(discoveredJson);
+        }
+    }
+
+    // Step 5: Call Expo_Initialize with module type names
     int rc = m_expoInitialize(
         reinterpret_cast<uint8_t*>(const_cast<char*>(moduleTypesJson.data())),
         static_cast<int>(moduleTypesJson.size()));
@@ -193,7 +223,7 @@ void ExpoModuleHost::Initialize(const std::wstring& assemblyDir,
         throw std::runtime_error("ExpoModuleHost: Expo_Initialize failed (rc=" + std::to_string(rc) + ")");
     }
 
-    // Step 5: Get module definitions
+    // Step 6: Get module definitions
     uint8_t* defsJson = nullptr;
     int defsLen = 0;
     rc = m_expoGetModuleDefinitions(&defsJson, &defsLen);

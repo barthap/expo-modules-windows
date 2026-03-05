@@ -35,8 +35,8 @@ private:
   // Resolve the directory containing C# assemblies
   std::wstring FindAssemblyDir();
 
-  // Get the module types JSON from autolinking (hardcoded for MVP, generated in step 3)
-  std::string GetModuleTypesJson();
+  // Find the provider assembly DLL in the managed/ directory
+  std::wstring FindProviderAssemblyPath(const std::wstring& assemblyDir);
 };
 
 } // namespace winrt::ExpoModulesWindowsCore

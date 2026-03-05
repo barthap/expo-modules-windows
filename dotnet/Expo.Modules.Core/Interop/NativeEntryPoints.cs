@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -15,6 +16,43 @@ public static class NativeEntryPoints
     private static ModuleRegistry? _registry;
     private static IntPtr _eventCallbackPtr;
     private static IntPtr _eventUserDataPtr;
+
+    // ---- Module Discovery ----
+
+    [UnmanagedCallersOnly(EntryPoint = "Expo_DiscoverModules")]
+    public static unsafe int Expo_DiscoverModules(
+        byte* assemblyPathUtf8, int pathLen,
+        byte** outJson, int* outLen)
+    {
+        try
+        {
+            var path = Encoding.UTF8.GetString(assemblyPathUtf8, pathLen);
+            var assembly = Assembly.LoadFrom(path);
+
+            // Find ExpoModulesProvider class
+            var providerType = assembly.GetType("Expo.Modules.Autolinking.ExpoModulesProvider")
+                ?? throw new InvalidOperationException(
+                    $"Assembly '{path}' does not contain Expo.Modules.Autolinking.ExpoModulesProvider");
+
+            var method = providerType.GetMethod("GetModuleClasses", BindingFlags.Public | BindingFlags.Static)
+                ?? throw new InvalidOperationException(
+                    "ExpoModulesProvider does not have a public static GetModuleClasses() method");
+
+            var moduleTypes = (Type[])method.Invoke(null, null)!;
+
+            // Return assembly-qualified type names as JSON array
+            var typeNames = moduleTypes.Select(t => t.AssemblyQualifiedName!).ToArray();
+            var json = JsonSerializer.SerializeToUtf8Bytes(typeNames);
+            AllocAndCopy(json, outJson, outLen);
+            return 0;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Expo_DiscoverModules failed: {ex}");
+            WriteExceptionJson(outJson, outLen, ex);
+            return -1;
+        }
+    }
 
     // ---- Initialization ----
 

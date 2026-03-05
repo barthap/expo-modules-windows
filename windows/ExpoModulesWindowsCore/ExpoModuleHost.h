@@ -36,15 +36,19 @@ using Expo_InvokeAsyncFn = int(__stdcall*)(
     void* callbackPtr, void* userDataPtr);
 using Expo_EmitEvent_SetCallbackFn = void(__stdcall*)(void* callbackPtr, void* userDataPtr);
 using Expo_FreeBufferFn = void(__stdcall*)(uint8_t* ptr);
+using Expo_DiscoverModulesFn = int(__stdcall*)(
+    uint8_t* assemblyPath, int pathLen,
+    uint8_t** outJson, int* outLen);
 
 class ExpoModuleHost {
 public:
     static ExpoModuleHost& Instance();
 
-    // Full initialization sequence: load HostFXR → init runtime → resolve exports → init modules
+    // Full initialization sequence: load HostFXR → init runtime → resolve exports → discover modules → init
     // assemblyDir: directory containing Expo.Modules.Core.dll + runtimeconfig.json
-    // moduleTypesJson: JSON array of assembly-qualified type names, e.g. ["Namespace.Type, Assembly"]
-    void Initialize(const std::wstring& assemblyDir, const std::string& moduleTypesJson);
+    // providerAssemblyPath: path to DLL containing ExpoModulesProvider (e.g. ExampleModules.dll)
+    //   If empty, initializes with no modules.
+    void Initialize(const std::wstring& assemblyDir, const std::wstring& providerAssemblyPath);
 
     bool IsInitialized() const { return m_initialized; }
 
@@ -92,6 +96,7 @@ private:
     Expo_InvokeAsyncFn m_expoInvokeAsync = nullptr;
     Expo_EmitEvent_SetCallbackFn m_expoSetEventCallback = nullptr;
     Expo_FreeBufferFn m_expoFreeBuffer = nullptr;
+    Expo_DiscoverModulesFn m_expoDiscoverModules = nullptr;
 
     // Parsed module metadata
     std::vector<ModuleInfo> m_modules;

@@ -36,7 +36,10 @@
     "!**/__fixtures__",
     "!**/__mocks__",
     "!**/.*",
-    "windows"
+    "windows",
+    "dotnet/Expo.Modules.Core",
+    "!dotnet/Expo.Modules.Core/bin",
+    "!dotnet/Expo.Modules.Core/obj"
   ],
   "scripts": {
     "example": "yarn workspace expo-modules-windows-core-example",

@@ -144,6 +144,7 @@
   <ImportGroup Label="ReactNativeWindowsTargets">
     <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.CppLib.targets" Condition="Exists('$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.CppLib.targets')" />
   </ImportGroup>
+  <Import Project="ExpoManagedDeploy.targets" />
   <!-- Copy nethost.dll to the output directory -->
   <Target Name="CopyNethost" AfterTargets="Build">
     <ItemGroup>
