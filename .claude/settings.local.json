@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(xargs ls:*)",
+      "WebFetch(domain:docs.expo.dev)",
+      "WebFetch(domain:microsoft.github.io)",
+      "WebFetch(domain:github.com)",
+      "Bash(test/hostfxr-poc/build.bat:*)",
+      "Bash(./test/hostfxr-poc/build/Release/hostfxr_poc.exe:*)",
+      "Bash(cmd:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(rsync:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx jest:*)",
+      "Bash(curl:*)",
+      "Bash(yarn example:*)",
+      "Bash(msbuild:*)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe\":*)",
+      "Bash(ls:*)",
+      "Bash(xargs grep:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(tasklist:*)"
+    ]
+  }
+}
