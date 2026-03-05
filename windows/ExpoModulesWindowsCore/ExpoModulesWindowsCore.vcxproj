@@ -88,8 +88,7 @@
       </AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>shell32.lib;user32.lib;windowsapp.lib;nethost.lib;%(AdditionalDependenices)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(NetHostDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>shell32.lib;user32.lib;windowsapp.lib;%(AdditionalDependenices)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
       <GenerateWindowsMetadata>true</GenerateWindowsMetadata>
       <ModuleDefinitionFile>ExpoModulesWindowsCore.def</ModuleDefinitionFile>
@@ -144,16 +143,6 @@
   <ImportGroup Label="ReactNativeWindowsTargets">
     <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.CppLib.targets" Condition="Exists('$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.CppLib.targets')" />
   </ImportGroup>
-  <Import Project="ExpoManagedDeploy.targets" />
-  <!-- Copy nethost.dll to the output directory -->
-  <Target Name="CopyNethost" AfterTargets="Build">
-    <ItemGroup>
-      <_NetHostDll Include="$(NetHostDir)\nethost.dll" />
-    </ItemGroup>
-    <Copy SourceFiles="@(_NetHostDll)"
-          DestinationFolder="$(OutDir)"
-          SkipUnchangedFiles="true" />
-  </Target>
   <Target Name="EnsureReactNativeWindowsTargets" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references targets in your node_modules\react-native-windows folder. The missing file is {0}.</ErrorText>

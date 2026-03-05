@@ -5,7 +5,9 @@
 #include "ExpoModuleHost.h"
 
 #include <filesystem>
-#include <nethost.h>
+// Note: we intentionally do NOT #include <nethost.h> — instead of linking nethost.lib
+// (which creates a DLL dependency that breaks MSIX packaging), we locate hostfxr.dll
+// directly by scanning the .NET runtime installation directory.
 #include <hostfxr.h>
 #include <coreclr_delegates.h>
 #include <nlohmann/json.hpp>
@@ -56,17 +58,48 @@ ExpoModuleHost& ExpoModuleHost::Instance() {
 
 // ---- Step 1: Load hostfxr.dll ----
 
-bool ExpoModuleHost::LoadHostFxr() {
-    wchar_t hostfxrPath[MAX_PATH];
-    size_t pathSize = MAX_PATH;
+// Find hostfxr.dll by scanning the .NET runtime installation directory.
+// This replaces get_hostfxr_path() from nethost.dll to avoid a static DLL dependency
+// that breaks MSIX packaging (nethost.dll isn't redistributed in the package).
+static std::wstring FindHostFxrPath() {
+    namespace fs = std::filesystem;
 
-    int rc = get_hostfxr_path(hostfxrPath, &pathSize, nullptr);
-    if (rc != 0) {
-        OutputDebugStringA("ExpoModuleHost: get_hostfxr_path failed\n");
+    // Determine .NET root directory
+    std::wstring dotnetRoot;
+    wchar_t* envRoot = nullptr;
+    size_t envLen = 0;
+    if (_wdupenv_s(&envRoot, &envLen, L"DOTNET_ROOT") == 0 && envRoot) {
+        dotnetRoot = envRoot;
+        free(envRoot);
+    }
+    if (dotnetRoot.empty()) {
+        dotnetRoot = L"C:\\Program Files\\dotnet";
+    }
+
+    // Scan dotnet/host/fxr/<version>/ for the latest version
+    auto fxrDir = fs::path(dotnetRoot) / L"host" / L"fxr";
+    if (!fs::exists(fxrDir)) return {};
+
+    std::wstring latestVersion;
+    for (const auto& entry : fs::directory_iterator(fxrDir)) {
+        if (entry.is_directory()) {
+            auto name = entry.path().filename().wstring();
+            if (name > latestVersion) latestVersion = name;
+        }
+    }
+
+    if (latestVersion.empty()) return {};
+    return (fxrDir / latestVersion / L"hostfxr.dll").wstring();
+}
+
+bool ExpoModuleHost::LoadHostFxr() {
+    auto hostfxrPath = FindHostFxrPath();
+    if (hostfxrPath.empty()) {
+        OutputDebugStringA("ExpoModuleHost: could not find hostfxr.dll in .NET installation\n");
         return false;
     }
 
-    HMODULE lib = LoadLibraryW(hostfxrPath);
+    HMODULE lib = LoadLibraryW(hostfxrPath.c_str());
     if (!lib) {
         OutputDebugStringA("ExpoModuleHost: LoadLibraryW(hostfxr) failed\n");
         return false;
