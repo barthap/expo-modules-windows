@@ -1,6 +1,7 @@
 <!--
   ExpoExampleDeploy.targets
-  Builds the example C# module and copies its DLL to $(OutDir)\managed\
+  Builds the example C# module and deploys managed DLLs for both
+  regular builds (copy to OutDir) and MSIX packaging (Content items for AppX).
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 
@@ -10,26 +11,63 @@
     <_ExpoExampleConfig Condition="'$(Configuration)'=='Release'">Release</_ExpoExampleConfig>
     <_ExpoExampleConfig Condition="'$(_ExpoExampleConfig)'==''">Debug</_ExpoExampleConfig>
     <_ExpoExampleOutputDir>$(_ExpoExampleCsprojDir)bin\$(_ExpoExampleConfig)\net9.0-windows10.0.19041.0\</_ExpoExampleOutputDir>
+    <_ExpoCoreCsprojDir>$(MSBuildThisFileDirectory)..\..\..\dotnet\Expo.Modules.Core\</_ExpoCoreCsprojDir>
+    <_ExpoCoreOutputDir>$(_ExpoCoreCsprojDir)bin\$(_ExpoExampleConfig)\net9.0-windows10.0.19041.0\</_ExpoCoreOutputDir>
   </PropertyGroup>
 
-  <!-- Pre-build: dotnet build the example module -->
+  <!-- Pre-build: dotnet build the example module (which also builds core via ProjectReference) -->
   <Target Name="BuildExampleModule" BeforeTargets="ClCompile">
     <Message Text="Building ExampleModules (C#)..." Importance="high" />
     <Exec Command="dotnet build &quot;$(_ExpoExampleCsprojDir)ExampleModule.csproj&quot; -c $(_ExpoExampleConfig) --nologo -v:q"
           WorkingDirectory="$(_ExpoExampleCsprojDir)" />
   </Target>
 
-  <!-- Post-build: copy example module DLL to managed/ -->
+  <!-- Post-build: copy all managed assemblies to $(OutDir)\managed\ -->
   <Target Name="DeployExampleModule" AfterTargets="Build">
     <ItemGroup>
-      <_ExampleModuleFiles Include="$(_ExpoExampleOutputDir)ExampleModules.dll" />
-      <_ExampleModuleFiles Include="$(_ExpoExampleOutputDir)ExampleModules.pdb" />
+      <_ManagedFiles Include="$(_ExpoCoreOutputDir)*.dll" />
+      <_ManagedFiles Include="$(_ExpoCoreOutputDir)*.pdb" />
+      <_ManagedFiles Include="$(_ExpoCoreOutputDir)*.runtimeconfig.json" />
+      <_ManagedFiles Include="$(_ExpoExampleOutputDir)ExampleModules.dll" />
+      <_ManagedFiles Include="$(_ExpoExampleOutputDir)ExampleModules.pdb" />
     </ItemGroup>
-    <Message Text="Copying ExampleModules to $(OutDir)managed\" Importance="high" />
+    <Message Text="Copying managed assemblies to $(OutDir)managed\" Importance="high" />
     <MakeDir Directories="$(OutDir)managed" />
-    <Copy SourceFiles="@(_ExampleModuleFiles)"
+    <Copy SourceFiles="@(_ManagedFiles)"
           DestinationFolder="$(OutDir)managed"
           SkipUnchangedFiles="true" />
   </Target>
+
+  <!--
+    Declare managed files as Content so MSIX packaging (wapproj) includes them in AppX.
+    DeploymentContent=true tells the packaging project to copy these into the package layout.
+  -->
+  <ItemGroup>
+    <Content Include="$(_ExpoCoreOutputDir)Expo.Modules.Core.dll">
+      <Link>managed\Expo.Modules.Core.dll</Link>
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(_ExpoCoreOutputDir)Expo.Modules.Core.runtimeconfig.json">
+      <Link>managed\Expo.Modules.Core.runtimeconfig.json</Link>
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(_ExpoExampleOutputDir)ExampleModules.dll">
+      <Link>managed\ExampleModules.dll</Link>
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Also ensure nethost.dll is in the AppX (library's Content may not flow transitively) -->
+  <Import Project="..\..\..\windows\ExpoModulesWindowsCore\NetHost.props" />
+  <ItemGroup>
+    <Content Include="$(NetHostDir)\nethost.dll" Condition="!Exists('$(OutDir)nethost.dll')">
+      <Link>nethost.dll</Link>
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
 </Project>

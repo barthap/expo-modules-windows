@@ -18,6 +18,7 @@ namespace ExpoModulesWindowsCoreCodegen {
 struct ExpoModulesWindowsCoreSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
   static constexpr auto methods = std::tuple{
       SyncMethod<double(double, double) noexcept>{0, L"multiply"},
+      SyncMethod<bool() noexcept>{1, L"install"},
   };
 
   template <class TModule>
@@ -29,6 +30,11 @@ struct ExpoModulesWindowsCoreSpec : winrt::Microsoft::ReactNative::TurboModuleSp
           "multiply",
           "    REACT_SYNC_METHOD(multiply) double multiply(double a, double b) noexcept { /* implementation */ }\n"
           "    REACT_SYNC_METHOD(multiply) static double multiply(double a, double b) noexcept { /* implementation */ }\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+          1,
+          "install",
+          "    REACT_SYNC_METHOD(install) bool install() noexcept { /* implementation */ }\n"
+          "    REACT_SYNC_METHOD(install) static bool install() noexcept { /* implementation */ }\n");
   }
 };
 

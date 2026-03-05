@@ -140,6 +140,20 @@
     <ResourceCompile Include="ExpoModulesWindowsCore.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="ExpoManagedDeploy.targets" />
+  <!-- nethost.dll: declare as Content so MSIX packaging includes it in AppX -->
+  <ItemGroup>
+    <Content Include="$(NetHostDir)\nethost.dll">
+      <Link>nethost.dll</Link>
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <Target Name="CopyNethost" AfterTargets="Build">
+    <Copy SourceFiles="$(NetHostDir)\nethost.dll"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
   <ImportGroup Label="ReactNativeWindowsTargets">
     <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.CppLib.targets" Condition="Exists('$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.CppLib.targets')" />
   </ImportGroup>

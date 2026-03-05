@@ -1,17 +1,44 @@
 import { useState } from 'react';
-import { Text, View, StyleSheet, Button, ScrollView } from 'react-native';
+import { Text, View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { multiply } from 'expo-modules-windows-core';
 
-// Access the ExampleModule via the global expo.modules host object
-const ExampleModule = (global as any).expo?.modules?.ExampleModule;
+function getExampleModule() {
+  console.log('__expoDebug', (global as any).__expoDebug);
+  console.log('global.expo', (global as any).expo);
+  console.log('global.expo.modules', (global as any).expo?.modules);
+  return (global as any).expo?.modules?.ExampleModule;
+}
+
+function getInitError(): string | undefined {
+  return (global as any).expo?.__initError;
+}
+
+function Btn({ title, onPress }: { title: string; onPress: () => void }) {
+  return (
+    <Pressable style={styles.button} onPress={onPress}>
+      <Text style={styles.buttonText}>{title}</Text>
+    </Pressable>
+  );
+}
 
 export default function App() {
+  const [moduleLoaded, setModuleLoaded] = useState<boolean | null>(null);
+  const [initError, setInitError] = useState<string>('');
   const [multiplyResult, setMultiplyResult] = useState<string>('');
   const [greetResult, setGreetResult] = useState<string>('');
   const [asyncResult, setAsyncResult] = useState<string>('');
   const [constants, setConstants] = useState<string>('');
 
   const turboMultiply = multiply(3, 7);
+
+  if (moduleLoaded === null) {
+    setTimeout(() => {
+      setModuleLoaded(!!getExampleModule());
+      setInitError(getInitError() ?? '');
+    }, 500);
+      console.log('global.expo', (global as any).expo);
+  console.log('global.expo.modules', (global as any).expo?.modules);
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -25,14 +52,20 @@ export default function App() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>ExampleModule (C# via HostObject)</Text>
         <Text style={styles.status}>
-          Module loaded: {ExampleModule ? 'Yes' : 'No'}
+          Module loaded: {moduleLoaded === null ? '...' : moduleLoaded ? 'Yes' : 'No'}
         </Text>
 
-        <Button
+        <Btn title="Check module" onPress={() => {
+          setModuleLoaded(!!getExampleModule());
+          setInitError(getInitError() ?? '');
+        }} />
+        {initError ? <Text style={styles.error}>Init error: {initError}</Text> : null}
+
+        <Btn
           title="multiply(6, 7)"
           onPress={() => {
             try {
-              const result = ExampleModule?.multiply(6, 7);
+              const result = getExampleModule()?.multiply(6, 7);
               setMultiplyResult(`Result: ${result}`);
             } catch (e: any) {
               setMultiplyResult(`Error: ${e.message}`);
@@ -41,11 +74,11 @@ export default function App() {
         />
         <Text>{multiplyResult}</Text>
 
-        <Button
+        <Btn
           title='greet("World")'
           onPress={() => {
             try {
-              const result = ExampleModule?.greet('World');
+              const result = getExampleModule()?.greet('World');
               setGreetResult(`Result: ${result}`);
             } catch (e: any) {
               setGreetResult(`Error: ${e.message}`);
@@ -54,12 +87,12 @@ export default function App() {
         />
         <Text>{greetResult}</Text>
 
-        <Button
+        <Btn
           title="delayedSquare(5) (async)"
           onPress={async () => {
             try {
               setAsyncResult('Computing...');
-              const result = await ExampleModule?.delayedSquare(5);
+              const result = await getExampleModule()?.delayedSquare(5);
               setAsyncResult(`Result: ${result}`);
             } catch (e: any) {
               setAsyncResult(`Error: ${e.message}`);
@@ -68,11 +101,11 @@ export default function App() {
         />
         <Text>{asyncResult}</Text>
 
-        <Button
+        <Btn
           title="Show Constants"
           onPress={() => {
             try {
-              const c = ExampleModule?.getConstants?.() ?? 'No getConstants()';
+              const c = getExampleModule()?.getConstants?.() ?? 'No getConstants()';
               setConstants(JSON.stringify(c, null, 2));
             } catch (e: any) {
               setConstants(`Error: ${e.message}`);
@@ -114,5 +147,22 @@ const styles = StyleSheet.create({
   status: {
     color: '#666',
     marginBottom: 4,
+  },
+  error: {
+    color: '#d32f2f',
+    fontSize: 12,
+    fontFamily: 'monospace',
+  },
+  button: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

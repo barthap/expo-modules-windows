@@ -25,12 +25,15 @@ struct ExpoModulesWindowsCore
   REACT_INIT(Initialize)
   void Initialize(React::ReactContext const &reactContext) noexcept;
 
-  // Keep multiply() for now — codegen expects it. Will be removed in step 3.
   REACT_SYNC_METHOD(multiply)
   double multiply(double a, double b) noexcept;
 
+  REACT_SYNC_METHOD(install)
+  bool install() noexcept;
+
 private:
   React::ReactContext m_context;
+  std::string m_initError;
 
   // Resolve the directory containing C# assemblies
   std::wstring FindAssemblyDir();

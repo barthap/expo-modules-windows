@@ -21,36 +21,45 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
         auto& host = expo::ExpoModuleHost::Instance();
         host.Initialize(assemblyDir, providerPath);
 
-        // Install the HostObject on global.expo.modules from the JS thread
+        // Install the HostObject on global.expo.modules via callInvoker.
+        // invokeAsync queues onto the JS thread — guaranteed to run once the
+        // runtime is live, unlike ExecuteJsi which silently drops from REACT_INIT.
         auto callInvoker = reactContext.CallInvoker();
+        auto hostObj = std::make_shared<expo::ExpoModulesHostObject>(host, callInvoker);
 
-        winrt::Microsoft::ReactNative::ExecuteJsi(reactContext,
-            [&host, callInvoker](facebook::jsi::Runtime& rt) {
-                using namespace facebook::jsi;
+        callInvoker->invokeAsync([hostObj = std::move(hostObj)](facebook::jsi::Runtime& rt) {
+            using namespace facebook::jsi;
 
-                auto hostObj = std::make_shared<expo::ExpoModulesHostObject>(host, callInvoker);
+            auto global = rt.global();
 
-                auto global = rt.global();
+            // Get or create global.expo
+            Value expoVal = global.getProperty(rt, "expo");
+            Object expo = expoVal.isObject()
+                ? expoVal.getObject(rt)
+                : Object(rt);
 
-                // Get or create global.expo
-                Value expoVal = global.getProperty(rt, "expo");
-                Object expo = expoVal.isObject()
-                    ? expoVal.getObject(rt)
-                    : Object(rt);
+            // Set global.expo.modules = ExpoModulesHostObject
+            expo.setProperty(rt,
+                "modules",
+                Object::createFromHostObject(rt, hostObj));
 
-                // Set global.expo.modules = ExpoModulesHostObject
-                expo.setProperty(rt,
-                    "modules",
-                    Object::createFromHostObject(rt, hostObj));
-
-                global.setProperty(rt, "expo", std::move(expo));
-            });
-
-        OutputDebugStringA("ExpoModulesWindowsCore: HostObject installed on global.expo.modules\n");
+            global.setProperty(rt, "expo", std::move(expo));
+        });
     }
     catch (const std::exception& ex) {
-        OutputDebugStringA(("ExpoModulesWindowsCore: initialization failed: " +
-                           std::string(ex.what()) + "\n").c_str());
+        m_initError = ex.what();
+        auto callInvoker = reactContext.CallInvoker();
+        callInvoker->invokeAsync([error = m_initError](facebook::jsi::Runtime& rt) {
+            using namespace facebook::jsi;
+            auto global = rt.global();
+            Object expo(rt);
+            expo.setProperty(rt, "__initError",
+                String::createFromUtf8(rt, error));
+            global.setProperty(rt, "expo", std::move(expo));
+        });
+    }
+    catch (...) {
+        m_initError = "unknown native exception during .NET initialization";
     }
 }
 
@@ -58,11 +67,15 @@ double ExpoModulesWindowsCore::multiply(double a, double b) noexcept {
     return a * b;
 }
 
+bool ExpoModulesWindowsCore::install() noexcept {
+    // No-op — kept for backward compat with the TurboModule spec.
+    // HostObject is now installed via callInvoker in REACT_INIT.
+    return m_initError.empty();
+}
+
 std::wstring ExpoModulesWindowsCore::FindAssemblyDir() {
     namespace fs = std::filesystem;
 
-    // Get the directory of the current DLL
-    // Use a static variable's address (not a member function pointer) for GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
     static const int s_anchor = 0;
     HMODULE hModule = nullptr;
     GetModuleHandleExW(
@@ -74,33 +87,29 @@ std::wstring ExpoModulesWindowsCore::FindAssemblyDir() {
     GetModuleFileNameW(hModule, dllPath, MAX_PATH);
     auto dllDir = fs::path(dllPath).parent_path();
 
-    // Probe for the C# assembly in known locations relative to the DLL
     fs::path candidates[] = {
-        dllDir / "managed",                               // Standard deployment layout
-        dllDir,                                             // Same directory as DLL
-        dllDir / ".." / "managed",                         // One level up
+        dllDir / "managed",
+        dllDir,
+        dllDir / ".." / "managed",
     };
 
     for (auto& dir : candidates) {
         if (fs::exists(dir / "Expo.Modules.Core.dll")) {
-            return fs::canonical(dir).wstring();
+            return fs::weakly_canonical(dir).wstring();
         }
     }
 
-    // Fallback: try development build paths relative to the project
-    // This handles the case where the app is running from VS build output
     auto projectDir = dllDir;
     for (int i = 0; i < 5; i++) {
         auto coreDir = projectDir / "dotnet" / "Expo.Modules.Core" / "bin";
         for (const auto* config : {L"Release", L"Debug"}) {
             auto candidate = coreDir / config / "net9.0-windows10.0.19041.0";
             if (fs::exists(candidate / "Expo.Modules.Core.dll")) {
-                return fs::canonical(candidate).wstring();
+                return fs::weakly_canonical(candidate).wstring();
             }
-            // Also try without Windows TFM
             candidate = coreDir / config / "net9.0";
             if (fs::exists(candidate / "Expo.Modules.Core.dll")) {
-                return fs::canonical(candidate).wstring();
+                return fs::weakly_canonical(candidate).wstring();
             }
         }
         projectDir = projectDir.parent_path();
@@ -113,8 +122,6 @@ std::wstring ExpoModulesWindowsCore::FindAssemblyDir() {
 std::wstring ExpoModulesWindowsCore::FindProviderAssemblyPath(const std::wstring& assemblyDir) {
     namespace fs = std::filesystem;
 
-    // Look for provider DLLs in the managed/ directory.
-    // Skip the core assembly — any other DLL is a potential provider.
     static const std::wstring kCoreAssembly = L"Expo.Modules.Core.dll";
 
     if (!fs::exists(assemblyDir)) {
@@ -126,19 +133,14 @@ std::wstring ExpoModulesWindowsCore::FindProviderAssemblyPath(const std::wstring
         auto filename = entry.path().filename().wstring();
         if (filename == kCoreAssembly) continue;
 
-        // Skip non-DLL files
         auto ext = entry.path().extension().wstring();
         if (ext != L".dll") continue;
 
-        // Skip known .NET framework/system DLLs
         if (filename.starts_with(L"System.") || filename.starts_with(L"Microsoft.")) continue;
 
-        OutputDebugStringW((L"ExpoModulesWindowsCore: found provider assembly: " +
-                           entry.path().wstring() + L"\n").c_str());
         return entry.path().wstring();
     }
 
-    OutputDebugStringA("ExpoModulesWindowsCore: no provider assembly found in managed/ dir\n");
     return L"";
 }
 
