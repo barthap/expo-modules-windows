@@ -269,6 +269,32 @@ public static double Invoke_multiply(double a, double b) => _instance.multiply(a
 - `[UnmanagedCallersOnly]` exports consumed directly by C++ via `GetProcAddress`
 - Eliminates HostFXR startup cost
 - Reduces deployment size (no .NET runtime distribution)
+- **Both HostFXR and NativeAOT remain supported** — modules needing full reflection use HostFXR
+
+#### 3.4 Marshaling Optimization Roadmap
+
+The path from MVP to optimal performance — each step builds on the previous:
+
+| Level | Approach | Who Does the Work | NativeAOT? | Perf |
+|-------|----------|-------------------|------------|------|
+| **L0 (MVP)** | JSON via `System.Text.Json` | Runtime (de)serialization | ✅ with source gen | Baseline |
+| **L1** | STJ Source Generators | Compile-time serializer codegen | ✅ | ~2-3x faster |
+| **L2** | Roslyn Source Generator — typed dispatch | Generate per-function `[UnmanagedCallersOnly]` exports with known signatures — no `Delegate.DynamicInvoke`, no JSON for primitives | ✅ | ~10x faster |
+| **L3** | Binary protocol (MessagePack/FlatBuffers) | For complex objects only — primitives already pass on the stack at L2 | ✅ | ~15x faster |
+| **L4 (aspirational)** | Direct JSI integration via C++/CLI or COM | C# code directly manipulates `jsi::Runtime` via a safe wrapper — no marshaling at all | ❓ research needed | Near-native |
+
+**Key design principle:** The C++ host always converts `jsi::Value` → native types on the C++ side, then calls into C# with typed arguments. We never expose raw `jsi::Value` pointers to C# — this keeps the ABI stable across JSI/Hermes versions and avoids coupling to C++ class layouts.
+
+**L2 in detail (the sweet spot):**
+```csharp
+// Module author writes:
+Function("add", (int a, int b) => a + b);
+
+// Source generator emits:
+[UnmanagedCallersOnly(EntryPoint = "MathModule_add")]
+public static int MathModule_add(int a, int b) => _instance._add(a, b);
+```
+C++ calls the generated export directly — no JSON, no reflection, no delegate indirection. Primitives pass on the stack. Only complex objects (records, arrays, dictionaries) go through a serialization layer.
 
 **Deliverables:**
 - [ ] Binary serialization protocol
@@ -372,19 +398,29 @@ public class MapViewModule : Module
 |--------|---------|-----------|
 | **Dev iteration speed** | Fast (no AOT compile) | Slow (full recompile) |
 | **Debugging** | Full .NET debugger | Limited |
-| **Reflection** | Available | Not available |
+| **Reflection** | Full runtime reflection | Limited (see below) |
 | **Hot Reload** | Supported | Not supported |
 | **Runtime dependency** | Requires .NET | Self-contained |
 | **Binary size** | Small DLL + runtime | ~10MB+ per module |
 
 HostFXR is better for development. NativeAOT is better for production/distribution. Support both.
 
-### Why JSON for MVP marshaling?
+**NativeAOT reflection nuance:** NativeAOT doesn't eliminate reflection — it limits it. `typeof(T)`, attribute lookup, and reflection on statically-reachable types all work. What breaks: `Assembly.GetTypes()` scanning, `MethodInfo.Invoke()` on trimmed methods, `Marshal.GetFunctionPointerForDelegate()` for dynamic delegates, and `Expression.Compile()`. Our infrastructure uses source generators to avoid these. Module authors can use most C# features freely (LINQ, async/await, generics, records). Advanced modules needing full reflection fall back to HostFXR.
+
+### Why JSON for MVP marshaling? (Not raw pointers)
 
 - `System.Text.Json` is fast, well-tested, and handles complex types
 - JSI has efficient JSON parsing built in
 - Correctness first, then optimize
 - Easy to debug (human-readable)
+- AOT-compatible with source generators (unlike reflection-based pointer mapping)
+
+**Why NOT raw JSI pointer passing (Gemini's "zero-JSON" proposal):**
+- `jsi::Value` is a C++ class with compiler-specific layout, not a stable ABI struct — mapping it to a C# `StructLayout` is fragile and breaks across RNW versions
+- "Back-link" P/Invoke calls for every string/object read are each a managed→native transition with their own overhead
+- The approach requires `Marshal.GetFunctionPointerForDelegate` and `MethodInfo.Invoke` — both incompatible with NativeAOT
+- Expo on iOS/Android also uses conversion layers (not raw pointer passing)
+- The real optimization path is source generators + typed dispatch, not raw memory access
 
 ### Why not use `node-api-dotnet` directly?
 
@@ -454,7 +490,7 @@ expo-modules-autolinking/           # Separate forked repo
 | HostFXR loading fails in RNW process | Blocks MVP | **PoC spike first** — test early; fallback to separate process or NativeAOT-only |
 | JSON marshaling too slow for real apps | Perf issues | Phase 3 binary protocol; benchmark early |
 | RNW internals change (breaking) | Maintenance burden | Pin RNW version; use public APIs only |
-| NativeAOT limitations (no reflection) | Blocks Phase 3 | Autolinking codegen eliminates reflection need |
+| NativeAOT limitations (limited reflection) | Blocks some modules in Phase 3 | Source generators for core infra; HostFXR fallback for advanced modules needing full reflection |
 | expo-modules-autolinking fork diverges from upstream | Maintenance | Keep fork minimal; propose upstream PR for Windows platform |
 | Thread safety (JS thread vs .NET threads) | Race conditions | Clear threading model; dispatch to correct thread |
 | Mixed C++/C# solution build complexity | DX friction | Thorough MSBuild integration; test on clean machines |
