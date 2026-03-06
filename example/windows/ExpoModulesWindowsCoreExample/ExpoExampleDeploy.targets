@@ -54,6 +54,16 @@
       <DeploymentContent>true</DeploymentContent>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="$(_ExpoCoreOutputDir)Expo.Modules.Core.pdb" Condition="'$(Configuration)'=='Debug'">
+      <Link>managed\Expo.Modules.Core.pdb</Link>
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="$(_ExpoExampleOutputDir)ExampleModules.pdb" Condition="'$(Configuration)'=='Debug'">
+      <Link>managed\ExampleModules.pdb</Link>
+      <DeploymentContent>true</DeploymentContent>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <!-- Also ensure nethost.dll is in the AppX (library's Content may not flow transitively) -->
