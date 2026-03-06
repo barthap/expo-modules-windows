@@ -85,13 +85,19 @@ The specific failure chain:
 
 **Key rule for MSIX projects:** Any file that needs to be available at runtime must be declared as `Content` with `DeploymentContent=true`. Post-build copy targets (`<Copy>`) only place files in `$(OutDir)`, which is **not** where the app runs from when deployed as MSIX.
 
-## Issue 5: VS F5 Deployment — Unreliable
+## Issue 5: VS F5 Deployment — Wrong Startup Project
 
-**Symptom:** `CLASS_NOT_REGISTERED` crash persists with VS F5 even after Content declarations are correct, while `yarn react-native run-windows` works.
+**Symptom:** `CLASS_NOT_REGISTERED` crash with VS F5 even after Content declarations are correct, while `yarn react-native run-windows` works.
 
-**Status:** Unresolved. Likely a stale MSIX registration issue in VS's deployment pipeline. `Remove-AppxPackage` + clean rebuild does not reliably fix it.
+**Root cause:** The startup project was set to `ExpoModulesWindowsCoreExample` (the vcxproj) instead of `ExpoModulesWindowsCoreExample.Package` (the wapproj). When the vcxproj is the startup project:
+1. The wapproj is **not** a dependency of the vcxproj (it's the reverse), so VS never builds or deploys the MSIX package
+2. VS launches the .exe directly from `x64/Debug/` without MSIX registration
+3. The `AppxManifest.xml` activatable class entries (`ExpoModulesWindowsCore.ReactPackageProvider`, etc.) don't apply
+4. All WinRT class activations fail → `CLASS_NOT_REGISTERED`
 
-**Workaround:** Use `yarn react-native run-windows` for development and testing.
+**Why `yarn react-native run-windows` works:** The CLI always builds the entire solution, then explicitly deploys using `DeployAppRecipe.exe` with the wapproj's `.build.appxrecipe`, and launches via `ApplicationActivationManager.ActivateApplication()`.
+
+**Fix:** In VS, right-click `ExpoModulesWindowsCoreExample.Package` → **Set as Startup Project**, then F5.
 
 ## Key Takeaways
 
@@ -99,4 +105,4 @@ The specific failure chain:
 2. **A broken in-process WinRT server DLL poisons the entire package.** If your DLL is registered in the AppxManifest and can't be loaded (missing dependencies), ALL WinRT activations fail — even for unrelated system classes.
 3. **CppWinRT cycle errors are transient** — clean rebuild (possibly multiple times) resolves them.
 4. **MSBuild property evaluation** happens before targets run. Properties needed for `AdditionalIncludeDirectories` must use static property functions, not target-based resolution.
-5. **Use `yarn react-native run-windows`** instead of VS F5 for reliable testing.
+5. **Set the `.Package` (wapproj) as the VS startup project**, not the vcxproj. The wapproj handles MSIX registration; without it, WinRT activations fail.
