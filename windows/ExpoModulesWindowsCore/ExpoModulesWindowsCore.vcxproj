@@ -140,6 +140,13 @@
   <ItemGroup>
     <ResourceCompile Include="ExpoModulesWindowsCore.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\dotnet\Expo.Modules.Core\Expo.Modules.Core.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <Import Project="ExpoManagedDeploy.targets" />
   <!-- nethost.dll: declare as Content so MSIX packaging includes it in AppX -->

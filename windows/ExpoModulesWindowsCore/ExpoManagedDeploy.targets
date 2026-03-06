@@ -9,15 +9,11 @@
     <_ExpoCoreConfig Condition="'$(Configuration)'=='Debug'">Debug</_ExpoCoreConfig>
     <_ExpoCoreConfig Condition="'$(Configuration)'=='Release'">Release</_ExpoCoreConfig>
     <_ExpoCoreConfig Condition="'$(_ExpoCoreConfig)'==''">Debug</_ExpoCoreConfig>
-    <_ExpoCoreOutputDir>$(_ExpoCoreCsprojDir)bin\$(_ExpoCoreConfig)\net9.0-windows10.0.19041.0\</_ExpoCoreOutputDir>
+    <_ExpoCoreOutputDir>$(_ExpoCoreCsprojDir)bin\$(Platform)\$(_ExpoCoreConfig)\net9.0-windows10.0.19041.0\</_ExpoCoreOutputDir>
   </PropertyGroup>
 
-  <!-- Pre-build: dotnet build the C# core library -->
-  <Target Name="BuildManagedCore" BeforeTargets="ClCompile">
-    <Message Text="Building Expo.Modules.Core (C#)..." Importance="high" />
-    <Exec Command="dotnet build &quot;$(_ExpoCoreCsprojDir)Expo.Modules.Core.csproj&quot; -c $(_ExpoCoreConfig) --nologo -v:q"
-          WorkingDirectory="$(_ExpoCoreCsprojDir)" />
-  </Target>
+  <!-- C# core library is built via ProjectReference in the vcxproj.
+       This target only handles copying the output to the managed\ directory. -->
 
   <!-- Post-build: copy managed assemblies to output -->
   <Target Name="DeployManagedCore" AfterTargets="Build">

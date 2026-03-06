@@ -10,17 +10,13 @@
     <_ExpoExampleConfig Condition="'$(Configuration)'=='Debug'">Debug</_ExpoExampleConfig>
     <_ExpoExampleConfig Condition="'$(Configuration)'=='Release'">Release</_ExpoExampleConfig>
     <_ExpoExampleConfig Condition="'$(_ExpoExampleConfig)'==''">Debug</_ExpoExampleConfig>
-    <_ExpoExampleOutputDir>$(_ExpoExampleCsprojDir)bin\$(_ExpoExampleConfig)\net9.0-windows10.0.19041.0\</_ExpoExampleOutputDir>
+    <_ExpoExampleOutputDir>$(_ExpoExampleCsprojDir)bin\$(Platform)\$(_ExpoExampleConfig)\net9.0-windows10.0.19041.0\</_ExpoExampleOutputDir>
     <_ExpoCoreCsprojDir>$(MSBuildThisFileDirectory)..\..\..\dotnet\Expo.Modules.Core\</_ExpoCoreCsprojDir>
-    <_ExpoCoreOutputDir>$(_ExpoCoreCsprojDir)bin\$(_ExpoExampleConfig)\net9.0-windows10.0.19041.0\</_ExpoCoreOutputDir>
+    <_ExpoCoreOutputDir>$(_ExpoCoreCsprojDir)bin\$(Platform)\$(_ExpoExampleConfig)\net9.0-windows10.0.19041.0\</_ExpoCoreOutputDir>
   </PropertyGroup>
 
-  <!-- Pre-build: dotnet build the example module (which also builds core via ProjectReference) -->
-  <Target Name="BuildExampleModule" BeforeTargets="ClCompile">
-    <Message Text="Building ExampleModules (C#)..." Importance="high" />
-    <Exec Command="dotnet build &quot;$(_ExpoExampleCsprojDir)ExampleModule.csproj&quot; -c $(_ExpoExampleConfig) --nologo -v:q"
-          WorkingDirectory="$(_ExpoExampleCsprojDir)" />
-  </Target>
+  <!-- C# example module is built via ProjectReference in the vcxproj.
+       This target only handles copying the output to the managed\ directory. -->
 
   <!-- Post-build: copy all managed assemblies to $(OutDir)\managed\ -->
   <Target Name="DeployExampleModule" AfterTargets="Build">
