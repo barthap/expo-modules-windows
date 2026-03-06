@@ -4,6 +4,10 @@
   <Import Project="$(SolutionDir)\ExperimentalFeatures.props" Condition="Exists('$(SolutionDir)\ExperimentalFeatures.props')" />
   <PropertyGroup Label="Globals">
     <CppWinRTOptimized>true</CppWinRTOptimized>
+    <!-- Pre-set to false: this app has no .idl files so no WinMD is generated.
+         Setting this early prevents CppWinRTComputeGetResolvedWinMD from running,
+         which avoids a cyclic dependency in the MSBuild target graph (MSB4006). -->
+    <CppWinRTGenerateWindowsMetadata>false</CppWinRTGenerateWindowsMetadata>
     <MinimalCoreWin>true</MinimalCoreWin>
     <ProjectGuid>{2218B80A-D8C9-4464-9A41-FF159716FA53}</ProjectGuid>
     <ProjectName>ExpoModulesWindowsCoreExample</ProjectName>
