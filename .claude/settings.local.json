@@ -37,7 +37,9 @@
       "Read(//c/Users/Barthap/AppData/Local/GitHub CLI/**)",
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:deepwiki.com)",
-      "Bash(yarn build:*)"
+      "Bash(yarn build:*)",
+      "Bash(head:*)",
+      "Bash(test:*)"
     ]
   }
 }
