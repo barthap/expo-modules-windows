@@ -1,0 +1,7 @@
+{
+  "platforms": ["windows"],
+  "windows": {
+    "modules": ["ExampleModules.ExampleModule"],
+    "projectPath": "ExampleModule.csproj"
+  }
+}

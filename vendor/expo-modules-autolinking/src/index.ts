@@ -1,5 +1,6 @@
 import commander from 'commander';
 
+import { autolinkWindowsCommand } from './commands/autolinkWindowsCommand';
 import { generateModulesProviderCommand } from './commands/generateModulesProviderCommand';
 import { reactNativeConfigCommand } from './commands/reactNativeConfigCommand';
 import { resolveCommand } from './commands/resolveCommand';
@@ -17,6 +18,7 @@ async function main(args: string[]) {
   resolveCommand(cli);
   generateModulesProviderCommand(cli);
   reactNativeConfigCommand(cli);
+  autolinkWindowsCommand(cli);
 
   await createMemoizer().withMemoizer(async () => {
     await cli.parseAsync(args, { from: 'user' });

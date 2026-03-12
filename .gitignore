@@ -84,3 +84,11 @@ android/generated
 
 # React Native Nitro Modules
 nitrogen/
+
+# Expo Modules Windows autolinking (generated)
+**/ExpoModulesAutolinked/
+**/ExpoModulesAutolinked.g.targets
+
+# C# build output
+**/bin/
+**/obj/
