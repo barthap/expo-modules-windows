@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
@@ -13,7 +14,11 @@ namespace Expo.Modules.Core.Interop;
 public static class NativeEntryPoints
 {
     private static readonly object Lock = new();
+    private static readonly Dictionary<string, Type> DiscoveredTypes = new();
+    private static bool _assemblyResolverRegistered;
     private static ModuleRegistry? _registry;
+    private static ViewRegistry? _viewRegistry;
+    private static Microsoft.UI.Xaml.Hosting.WindowsXamlManager? _xamlManager;
     private static IntPtr _eventCallbackPtr;
     private static IntPtr _eventUserDataPtr;
 
@@ -27,7 +32,9 @@ public static class NativeEntryPoints
         try
         {
             var path = Encoding.UTF8.GetString(assemblyPathUtf8, pathLen);
-            var assembly = Assembly.LoadFrom(path);
+            RegisterAssemblyResolver(Path.GetDirectoryName(path));
+            var assembly = AssemblyLoadContext.GetLoadContext(typeof(NativeEntryPoints).Assembly)!
+                .LoadFromAssemblyPath(Path.GetFullPath(path));
 
             // Find ExpoModulesProvider class
             var providerType = assembly.GetType("Expo.Modules.Autolinking.ExpoModulesProvider")
@@ -42,6 +49,14 @@ public static class NativeEntryPoints
 
             // Return assembly-qualified type names as JSON array
             var typeNames = moduleTypes.Select(t => t.AssemblyQualifiedName!).ToArray();
+            lock (Lock)
+            {
+                foreach (var type in moduleTypes)
+                {
+                    DiscoveredTypes[type.AssemblyQualifiedName!] = type;
+                    DiscoveredTypes[type.FullName!] = type;
+                }
+            }
             var json = JsonSerializer.SerializeToUtf8Bytes(typeNames);
             AllocAndCopy(json, outJson, outLen);
             return 0;
@@ -70,12 +85,18 @@ public static class NativeEntryPoints
                 var types = new Type[typeNames.Length];
                 for (int i = 0; i < typeNames.Length; i++)
                 {
-                    types[i] = Type.GetType(typeNames[i])
+                    types[i] = DiscoveredTypes.TryGetValue(typeNames[i], out var discoveredType)
+                        ? discoveredType
+                        : Type.GetType(typeNames[i])
                         ?? throw new ModuleNotFoundException(typeNames[i]);
+
+                    if (!typeof(Module).IsAssignableFrom(types[i]))
+                        throw new ModuleNotFoundException(typeNames[i]);
                 }
 
                 _registry = new ModuleRegistry(types);
                 _registry.Initialize();
+                _viewRegistry = new ViewRegistry(_registry);
                 return 0;
             }
         }
@@ -83,6 +104,135 @@ public static class NativeEntryPoints
         {
             Console.Error.WriteLine($"Expo_Initialize failed: {ex}");
             return -1;
+        }
+    }
+
+    // ---- View Management ----
+
+    [UnmanagedCallersOnly(EntryPoint = "Expo_CreateView")]
+    public static unsafe int Expo_CreateView(int moduleIdx, int* outViewId)
+    {
+        try
+        {
+            lock (Lock)
+            {
+                if (_viewRegistry is null)
+                    return -1;
+
+                EnsureXamlRuntime();
+                *outViewId = _viewRegistry.CreateView(moduleIdx);
+                return 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Expo_CreateView failed: {ex}");
+            return -1;
+        }
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "Expo_DestroyView")]
+    public static void Expo_DestroyView(int viewId)
+    {
+        try
+        {
+            lock (Lock)
+            {
+                _viewRegistry?.DestroyView(viewId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Expo_DestroyView failed: {ex}");
+        }
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "Expo_UpdateViewProps")]
+    public static unsafe int Expo_UpdateViewProps(int viewId, byte* propsJson, int propsLen)
+    {
+        try
+        {
+            lock (Lock)
+            {
+                if (_viewRegistry is null)
+                    return -1;
+
+                _viewRegistry.UpdateProps(viewId, new ReadOnlySpan<byte>(propsJson, propsLen));
+                return 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Expo_UpdateViewProps failed: {ex}");
+            return -1;
+        }
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "Expo_GetViewObject")]
+    public static nint Expo_GetViewObject(int viewId)
+    {
+        try
+        {
+            lock (Lock)
+            {
+                if (_viewRegistry is null)
+                    return 0;
+
+                var view = _viewRegistry.GetView(viewId).View;
+                var element = view.Content as Microsoft.UI.Xaml.FrameworkElement;
+                if (element is null)
+                {
+                    element = new Microsoft.UI.Xaml.Controls.ContentControl
+                    {
+                        Content = view.Content,
+                    };
+                }
+
+                var ptr = WinRT.MarshalInspectable<object>.FromManaged(element);
+                return ptr;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Expo_GetViewObject failed: {ex}");
+            return 0;
+        }
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "Expo_InitializeViewComposition")]
+    public static nint Expo_InitializeViewComposition(int viewId, nint compositorPtr)
+    {
+        try
+        {
+            lock (Lock)
+            {
+                if (_viewRegistry is null || compositorPtr == 0)
+                    return 0;
+
+                var view = _viewRegistry.GetView(viewId).View;
+                return view.InitializeComposition(compositorPtr);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Expo_InitializeViewComposition failed: {ex}");
+            return 0;
+        }
+    }
+
+    [UnmanagedCallersOnly(EntryPoint = "Expo_UpdateViewLayout")]
+    public static void Expo_UpdateViewLayout(int viewId, float width, float height)
+    {
+        try
+        {
+            lock (Lock)
+            {
+                _viewRegistry?.GetView(viewId).View.UpdateLayout(width, height);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Expo_UpdateViewLayout failed: {ex}");
         }
     }
 
@@ -305,5 +455,44 @@ public static class NativeEntryPoints
     private static byte[] MakeErrorJsonBytes(string code, string message)
     {
         return TypeConverter.Serialize(new { error = code, message });
+    }
+
+    private static void EnsureXamlRuntime()
+    {
+        if (_xamlManager is not null)
+            return;
+
+        var existing = Microsoft.UI.Xaml.Hosting.WindowsXamlManager.GetForCurrentThread();
+        if (existing is not null)
+        {
+            _xamlManager = existing;
+            return;
+        }
+
+        _xamlManager = Microsoft.UI.Xaml.Hosting.WindowsXamlManager.InitializeForCurrentThread();
+    }
+
+    private static void RegisterAssemblyResolver(string? assemblyDirectory)
+    {
+        if (_assemblyResolverRegistered)
+            return;
+
+        _assemblyResolverRegistered = true;
+        var coreAssembly = typeof(NativeEntryPoints).Assembly;
+        var directory = assemblyDirectory;
+
+        AssemblyLoadContext.GetLoadContext(coreAssembly)!.Resolving += (_, assemblyName) =>
+        {
+            if (assemblyName.Name == coreAssembly.GetName().Name)
+                return coreAssembly;
+
+            if (directory is null)
+                return null;
+
+            var candidate = Path.Combine(directory, assemblyName.Name + ".dll");
+            return File.Exists(candidate)
+                ? AssemblyLoadContext.GetLoadContext(coreAssembly)!.LoadFromAssemblyPath(candidate)
+                : null;
+        };
     }
 }

@@ -1,7 +1,7 @@
 {
   "platforms": ["windows"],
   "windows": {
-    "modules": ["ExampleModules.ExampleModule"],
+    "modules": ["ExampleModules.ExampleModule", "ExampleModules.ColorBoxModule"],
     "projectPath": "ExampleModule.csproj"
   }
 }

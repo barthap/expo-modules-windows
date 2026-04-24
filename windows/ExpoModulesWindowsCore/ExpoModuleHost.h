@@ -9,6 +9,7 @@
 #include <mutex>
 #include <functional>
 #include <cstdint>
+#include <optional>
 
 namespace expo {
 
@@ -20,6 +21,13 @@ struct ModuleInfo {
     std::vector<std::string> asyncFunctions;
     std::string constantsJson;  // Raw JSON string for constants object
     std::vector<std::string> events;
+    struct ViewInfo {
+        std::string componentName;
+        std::string kind;
+        std::vector<std::string> props;
+        std::vector<std::string> events;
+    };
+    std::optional<ViewInfo> view;
 };
 
 // C# export function signatures (matching NativeEntryPoints.cs)
@@ -39,6 +47,11 @@ using Expo_FreeBufferFn = void(__stdcall*)(uint8_t* ptr);
 using Expo_DiscoverModulesFn = int(__stdcall*)(
     uint8_t* assemblyPath, int pathLen,
     uint8_t** outJson, int* outLen);
+using Expo_CreateViewFn = int(__stdcall*)(int moduleIdx, int* outViewId);
+using Expo_DestroyViewFn = void(__stdcall*)(int viewId);
+using Expo_UpdateViewPropsFn = int(__stdcall*)(int viewId, uint8_t* propsJson, int propsLen);
+using Expo_InitializeViewCompositionFn = intptr_t(__stdcall*)(int viewId, intptr_t compositorPtr);
+using Expo_UpdateViewLayoutFn = void(__stdcall*)(int viewId, float width, float height);
 
 class ExpoModuleHost {
 public:
@@ -49,6 +62,7 @@ public:
     // providerAssemblyPath: path to DLL containing ExpoModulesProvider (e.g. ExampleModules.dll)
     //   If empty, initializes with no modules.
     void Initialize(const std::wstring& assemblyDir, const std::wstring& providerAssemblyPath);
+    void InitializeDefault();
 
     bool IsInitialized() const { return m_initialized; }
 
@@ -72,6 +86,12 @@ public:
 
     void FreeBuffer(uint8_t* ptr);
 
+    int CreateView(int moduleIdx, int* outViewId);
+    void DestroyView(int viewId);
+    int UpdateViewProps(int viewId, const std::string& propsJson);
+    intptr_t InitializeViewComposition(int viewId, intptr_t compositorPtr);
+    void UpdateViewLayout(int viewId, float width, float height);
+
 private:
     ExpoModuleHost() = default;
     ~ExpoModuleHost() = default;
@@ -83,6 +103,8 @@ private:
     bool InitializeRuntime(const std::wstring& runtimeConfigPath);
     bool ResolveExports(const std::wstring& assemblyPath);
     void ParseModuleDefinitions(const uint8_t* json, int len);
+    static std::wstring FindAssemblyDir();
+    static std::wstring FindProviderAssemblyPath(const std::wstring& assemblyDir);
 
     // State
     bool m_initialized = false;
@@ -97,6 +119,11 @@ private:
     Expo_EmitEvent_SetCallbackFn m_expoSetEventCallback = nullptr;
     Expo_FreeBufferFn m_expoFreeBuffer = nullptr;
     Expo_DiscoverModulesFn m_expoDiscoverModules = nullptr;
+    Expo_CreateViewFn m_expoCreateView = nullptr;
+    Expo_DestroyViewFn m_expoDestroyView = nullptr;
+    Expo_UpdateViewPropsFn m_expoUpdateViewProps = nullptr;
+    Expo_InitializeViewCompositionFn m_expoInitializeViewComposition = nullptr;
+    Expo_UpdateViewLayoutFn m_expoUpdateViewLayout = nullptr;
 
     // Parsed module metadata
     std::vector<ModuleInfo> m_modules;

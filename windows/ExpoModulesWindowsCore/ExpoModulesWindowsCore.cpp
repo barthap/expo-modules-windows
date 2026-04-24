@@ -14,12 +14,9 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
     m_context = reactContext;
 
     try {
-        auto assemblyDir = FindAssemblyDir();
-        auto providerPath = FindProviderAssemblyPath(assemblyDir);
-
         // Initialize the .NET runtime and all C# modules
         auto& host = expo::ExpoModuleHost::Instance();
-        host.Initialize(assemblyDir, providerPath);
+        host.InitializeDefault();
 
         // Install the HostObject on global.expo.modules via callInvoker.
         // invokeAsync queues onto the JS thread — guaranteed to run once the

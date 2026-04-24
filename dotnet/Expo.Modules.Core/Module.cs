@@ -91,6 +91,10 @@ public abstract class Module
     protected static IDefinitionComponent Events(params string[] names) =>
         new EventsComponent(names);
 
+    protected static ViewDefinition<TView> View<TView>(string? componentName = null)
+        where TView : ExpoView =>
+        new(componentName);
+
     protected static IDefinitionComponent OnCreate(Action callback) =>
         new LifecycleComponent(def => def.OnCreateCallback = callback);
 

@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { multiply } from 'expo-modules-windows-core';
+import { install, multiply, requireNativeViewManager } from 'expo-modules-windows-core';
+
+const ExpoColorBox = requireNativeViewManager<{
+  color?: string;
+  style?: object;
+}>('ExpoColorBox', ['color']);
 
 function getExampleModule() {
-  console.log('__expoDebug', (global as any).__expoDebug);
-  console.log('global.expo', (global as any).expo);
-  console.log('global.expo.modules', (global as any).expo?.modules);
   return (global as any).expo?.modules?.ExampleModule;
 }
 
@@ -28,17 +30,24 @@ export default function App() {
   const [greetResult, setGreetResult] = useState<string>('');
   const [asyncResult, setAsyncResult] = useState<string>('');
   const [constants, setConstants] = useState<string>('');
+  const [boxColor, setBoxColor] = useState<'red' | 'green' | 'orange' | 'purple'>('red');
 
   const turboMultiply = multiply(3, 7);
 
-  if (moduleLoaded === null) {
-    setTimeout(() => {
+  useEffect(() => {
+    try {
+      install();
+    } catch (e: any) {
+      setInitError(e.message);
+    }
+
+    const timeout = setTimeout(() => {
       setModuleLoaded(!!getExampleModule());
       setInitError(getInitError() ?? '');
     }, 500);
-      console.log('global.expo', (global as any).expo);
-  console.log('global.expo.modules', (global as any).expo?.modules);
-  }
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -114,6 +123,25 @@ export default function App() {
         />
         <Text>{constants}</Text>
       </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>ColorBoxModule (C# ExpoView)</Text>
+        <ExpoColorBox color={boxColor} style={styles.colorBox} />
+        <Btn
+          title="Cycle native view color"
+          onPress={() => {
+            setBoxColor((current) =>
+              current === 'red'
+                ? 'green'
+                : current === 'green'
+                  ? 'orange'
+                  : current === 'orange'
+                    ? 'purple'
+                    : 'red'
+            );
+          }}
+        />
+      </View>
     </ScrollView>
   );
 }
@@ -164,5 +192,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  colorBox: {
+    height: 120,
+    width: '100%',
   },
 });

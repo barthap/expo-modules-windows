@@ -4,6 +4,7 @@
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Expo.Modules.Core</RootNamespace>
@@ -11,6 +12,10 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Expo.Modules.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250401001" ExcludeAssets="build;buildTransitive" />
   </ItemGroup>
 
 </Project>

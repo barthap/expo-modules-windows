@@ -111,6 +111,7 @@
     <ClInclude Include="ExpoModuleHost.h" />
     <ClInclude Include="ExpoModulesHostObject.h" />
     <ClInclude Include="ExpoModuleObject.h" />
+    <ClInclude Include="ExpoViewManager.h" />
     <ClInclude Include="ExpoMarshal.h" />
     <ClInclude Include="ExpoAsyncCallback.h" />
     <ClInclude Include="ReactPackageProvider.h">
@@ -125,6 +126,7 @@
     <ClCompile Include="ExpoModuleHost.cpp" />
     <ClCompile Include="ExpoModulesHostObject.cpp" />
     <ClCompile Include="ExpoModuleObject.cpp" />
+    <ClCompile Include="ExpoViewManager.cpp" />
     <ClCompile Include="ExpoMarshal.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

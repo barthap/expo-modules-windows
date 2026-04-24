@@ -6,6 +6,7 @@
 #endif
 
 #include "ExpoModulesWindowsCore.h"
+#include "ExpoViewManager.h"
 
 using namespace winrt::Microsoft::ReactNative;
 
@@ -15,6 +16,7 @@ namespace winrt::ExpoModulesWindowsCore::implementation
 void ReactPackageProvider::CreatePackage(IReactPackageBuilder const &packageBuilder) noexcept
 {
   AddAttributedModules(packageBuilder, true);
+  expo::RegisterExpoViewComponents(packageBuilder);
 }
 
 } // namespace winrt::ExpoModulesWindowsCore::implementation

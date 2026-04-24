@@ -23,6 +23,7 @@ public class ModuleDefinition : IEnumerable
     internal Dictionary<string, FunctionDescriptor> AsyncFunctions { get; } = new();
     internal Dictionary<string, object?> ConstantsMap { get; } = new();
     internal List<string> EventNames { get; } = [];
+    internal ViewRegistration? ViewRegistration { get; set; }
 
     internal Action? OnCreateCallback { get; set; }
     internal Action? OnDestroyCallback { get; set; }

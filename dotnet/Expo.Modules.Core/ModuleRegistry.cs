@@ -43,6 +43,11 @@ public class ModuleRegistry
                 _definitions[i] = definition;
 
                 var name = definition.ModuleName ?? _moduleTypes[i].Name;
+                if (definition.ViewRegistration is not null)
+                {
+                    definition.ViewRegistration.ComponentName =
+                        definition.ViewRegistration.ExplicitComponentName ?? $"Expo{name}";
+                }
                 _nameToIndex[name] = i;
             }
 
@@ -124,6 +129,17 @@ public class ModuleRegistry
                     asyncFunctions = def.AsyncFunctions.Keys.ToArray(),
                     constants = def.ConstantsMap,
                     events = def.EventNames.ToArray(),
+                    view = def.ViewRegistration is null ? null : new
+                    {
+                        componentName = def.ViewRegistration.ComponentName,
+                        kind = "composition",
+                        props = def.ViewRegistration.Definition.Props.Select(prop => new
+                        {
+                            name = prop.Name,
+                            type = TypeConverter.GetManifestType(prop.ValueType),
+                        }).ToArray(),
+                        events = def.ViewRegistration.Definition.EventNames.ToArray(),
+                    },
                 });
             }
             return modules;
