@@ -125,6 +125,11 @@ bool ExpoModuleHost::ResolveExports(const std::wstring& assemblyPath) {
     ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_InvokeAsync", &m_expoInvokeAsync);
     ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_EmitEvent_SetCallback", &m_expoSetEventCallback);
     ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_FreeBuffer", &m_expoFreeBuffer);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_CreateView", &m_expoCreateView);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_DestroyView", &m_expoDestroyView);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_UpdateViewProps", &m_expoUpdateViewProps);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_InitializeViewComposition", &m_expoInitializeViewComposition);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_UpdateViewLayout", &m_expoUpdateViewLayout);
 
     // Expo_DiscoverModules is optional — don't fail if absent
     resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_DiscoverModules", &m_expoDiscoverModules);
@@ -156,6 +161,23 @@ void ExpoModuleHost::ParseModuleDefinitions(const uint8_t* json, int len) {
         }
         for (auto& ev : mod["events"]) {
             info.events.push_back(ev.get<std::string>());
+        }
+        if (mod.contains("view") && !mod["view"].is_null()) {
+            ModuleInfo::ViewInfo view;
+            auto& viewJson = mod["view"];
+            view.componentName = viewJson.value("componentName", "");
+            view.kind = viewJson.value("kind", "");
+            if (viewJson.contains("props")) {
+                for (auto& prop : viewJson["props"]) {
+                    view.props.push_back(prop["name"].get<std::string>());
+                }
+            }
+            if (viewJson.contains("events")) {
+                for (auto& ev : viewJson["events"]) {
+                    view.events.push_back(ev.get<std::string>());
+                }
+            }
+            info.view = std::move(view);
         }
 
         m_nameToIndex[info.name] = static_cast<int>(i);
@@ -240,6 +262,14 @@ void ExpoModuleHost::Initialize(const std::wstring& assemblyDir,
                        std::to_string(m_modules.size()) + " modules\n").c_str());
 }
 
+void ExpoModuleHost::InitializeDefault() {
+    if (m_initialized) return;
+
+    auto assemblyDir = FindAssemblyDir();
+    auto providerPath = FindProviderAssemblyPath(assemblyDir);
+    Initialize(assemblyDir, providerPath);
+}
+
 // ---- Module lookup ----
 
 const ModuleInfo* ExpoModuleHost::FindModule(const std::string& name) const {
@@ -282,6 +312,106 @@ void ExpoModuleHost::SetEventCallback(void* callbackPtr, void* userDataPtr) {
 
 void ExpoModuleHost::FreeBuffer(uint8_t* ptr) {
     m_expoFreeBuffer(ptr);
+}
+
+int ExpoModuleHost::CreateView(int moduleIdx, int* outViewId) {
+    return m_expoCreateView(moduleIdx, outViewId);
+}
+
+void ExpoModuleHost::DestroyView(int viewId) {
+    m_expoDestroyView(viewId);
+}
+
+int ExpoModuleHost::UpdateViewProps(int viewId, const std::string& propsJson) {
+    return m_expoUpdateViewProps(
+        viewId,
+        reinterpret_cast<uint8_t*>(const_cast<char*>(propsJson.data())),
+        static_cast<int>(propsJson.size()));
+}
+
+intptr_t ExpoModuleHost::InitializeViewComposition(int viewId, intptr_t compositorPtr) {
+    return m_expoInitializeViewComposition(viewId, compositorPtr);
+}
+
+void ExpoModuleHost::UpdateViewLayout(int viewId, float width, float height) {
+    m_expoUpdateViewLayout(viewId, width, height);
+}
+
+std::wstring ExpoModuleHost::FindAssemblyDir() {
+    namespace fs = std::filesystem;
+
+    static const int s_anchor = 0;
+    HMODULE hModule = nullptr;
+    GetModuleHandleExW(
+        GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        reinterpret_cast<LPCWSTR>(&s_anchor),
+        &hModule);
+
+    wchar_t dllPath[MAX_PATH];
+    GetModuleFileNameW(hModule, dllPath, MAX_PATH);
+    auto dllDir = fs::path(dllPath).parent_path();
+
+    fs::path candidates[] = {
+        dllDir / "managed",
+        dllDir,
+        dllDir / ".." / "managed",
+    };
+
+    for (auto& dir : candidates) {
+        if (fs::exists(dir / "Expo.Modules.Core.dll")) {
+            return fs::weakly_canonical(dir).wstring();
+        }
+    }
+
+    auto projectDir = dllDir;
+    for (int i = 0; i < 5; i++) {
+        auto coreDir = projectDir / "dotnet" / "Expo.Modules.Core" / "bin";
+        for (const auto* config : {L"Release", L"Debug"}) {
+            auto candidate = coreDir / config / "net9.0-windows10.0.19041.0";
+            if (fs::exists(candidate / "Expo.Modules.Core.dll")) {
+                return fs::weakly_canonical(candidate).wstring();
+            }
+            candidate = coreDir / config / "net9.0";
+            if (fs::exists(candidate / "Expo.Modules.Core.dll")) {
+                return fs::weakly_canonical(candidate).wstring();
+            }
+        }
+        projectDir = projectDir.parent_path();
+    }
+
+    throw std::runtime_error("Cannot find Expo.Modules.Core.dll. "
+        "Build the C# project first: dotnet build dotnet/Expo.Modules.Core");
+}
+
+std::wstring ExpoModuleHost::FindProviderAssemblyPath(const std::wstring& assemblyDir) {
+    namespace fs = std::filesystem;
+
+    static const std::wstring kCoreAssembly = L"Expo.Modules.Core.dll";
+
+    if (!fs::exists(assemblyDir)) {
+        return L"";
+    }
+
+    auto autolinkedAssembly = fs::path(assemblyDir) / L"ExpoModulesAutolinked.dll";
+    if (fs::exists(autolinkedAssembly)) {
+        return autolinkedAssembly.wstring();
+    }
+
+    for (const auto& entry : fs::directory_iterator(assemblyDir)) {
+        if (!entry.is_regular_file()) continue;
+        auto filename = entry.path().filename().wstring();
+        if (filename == kCoreAssembly) continue;
+        if (filename == L"WinRT.Runtime.dll") continue;
+
+        auto ext = entry.path().extension().wstring();
+        if (ext != L".dll") continue;
+
+        if (filename.starts_with(L"System.") || filename.starts_with(L"Microsoft.")) continue;
+
+        return entry.path().wstring();
+    }
+
+    return L"";
 }
 
 } // namespace expo

@@ -20,6 +20,7 @@
     <ItemGroup>
       <_ManagedCoreFiles Include="$(_ExpoCoreOutputDir)*.dll" />
       <_ManagedCoreFiles Include="$(_ExpoCoreOutputDir)*.pdb" />
+      <_ManagedCoreFiles Include="$(_ExpoCoreOutputDir)*.deps.json" />
       <_ManagedCoreFiles Include="$(_ExpoCoreOutputDir)*.runtimeconfig.json" />
     </ItemGroup>
     <Message Text="Copying managed core assemblies to $(OutDir)managed\" Importance="high" />

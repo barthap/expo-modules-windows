@@ -24,6 +24,26 @@ public static class TypeConverter
         return JsonSerializer.Deserialize(json, targetType, Options);
     }
 
+    public static string GetManifestType(Type type)
+    {
+        var nullable = Nullable.GetUnderlyingType(type);
+        if (nullable is not null)
+            type = nullable;
+
+        if (type == typeof(string) || type == typeof(char) || type.IsEnum)
+            return "string";
+        if (type == typeof(bool))
+            return "boolean";
+        if (type == typeof(byte) || type == typeof(sbyte) ||
+            type == typeof(short) || type == typeof(ushort) ||
+            type == typeof(int) || type == typeof(uint) ||
+            type == typeof(long) || type == typeof(ulong) ||
+            type == typeof(float) || type == typeof(double) ||
+            type == typeof(decimal))
+            return "number";
+        return "object";
+    }
+
     public static object?[] DeserializeArgs(ReadOnlySpan<byte> argsJson, Type[] paramTypes)
     {
         if (paramTypes.Length == 0)

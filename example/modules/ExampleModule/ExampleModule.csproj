@@ -4,6 +4,7 @@
     <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <AssemblyName>ExampleModules</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>ExampleModules</RootNamespace>
@@ -11,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\dotnet\Expo.Modules.Core\Expo.Modules.Core.csproj" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250401001" ExcludeAssets="build;buildTransitive" />
   </ItemGroup>
 
 </Project>

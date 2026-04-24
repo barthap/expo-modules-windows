@@ -6,6 +6,7 @@ const pack = require('../package.json');
 
 const root = path.resolve(__dirname, '..');
 const modules = Object.keys({ ...pack.peerDependencies });
+const escapedRootNodeModules = escapeWTF(path.join(root, 'node_modules'));
 
 const rnwPath = fs.realpathSync(
   path.resolve(require.resolve('react-native-windows/package.json'), '..'),
@@ -30,7 +31,9 @@ const config = {
     blockList: 
       modules.map(
         (m) =>
-          new RegExp(`^${escapeWTF(path.join(root, 'node_modules', m))}\\/.*$`)
+          new RegExp(
+            `^${escapedRootNodeModules}[/\\\\]${escapeWTF(m)}(?:[/\\\\].*)?$`
+          )
       ).concat([
         // This stops "npx @react-native-community/cli run-windows" from causing the metro server to crash if its already running
         new RegExp(
