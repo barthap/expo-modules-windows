@@ -1,4 +1,4 @@
-# CLAUDE.md - Project Context
+# AGENTS.md - Project Context
 
 ## Project: expo-modules-windows-core
 An Expo Modules Core implementation for Windows, enabling C# developers to write React Native Windows native modules using the Expo Modules declarative DSL.
