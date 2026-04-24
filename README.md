@@ -2,7 +2,9 @@
 
 Expo Modules Core implementation for Windows, enabling C# developers to write React Native Windows native modules using the Expo Modules declarative DSL — without touching C++ boilerplate.
 
-> **Status:** Early development (MVP). Sync/async functions, constants, and events are working. View components are not yet supported.
+> **Status:** HostFXR-based MVP is implemented. Sync/async functions, constants,
+> events, build integration, and Windows Expo autolinking are working. View
+> components and NativeAOT mode are the next major milestones.
 
 ## How It Works
 
@@ -60,7 +62,8 @@ npx expo-modules-autolinking autolink-windows \
   --app-proj windows/MyApp/MyApp.vcxproj
 ```
 
-This generates the build integration files and patches your solution. See [Autolinking](#autolinking) below.
+This generates the build integration files and patches your solution. See
+[Autolinking](#autolinking) below.
 
 ## Module API
 
@@ -131,7 +134,8 @@ For the full DSL reference and type system, see [docs/RESEARCH_DSL.md](docs/RESE
 
 ## Autolinking
 
-The autolinking CLI automates all build integration. After installing a module package, run:
+The autolinking CLI automates all build integration. After installing a module
+package, run:
 
 ```bash
 npx expo-modules-autolinking autolink-windows \
@@ -146,6 +150,8 @@ This will:
 - Patch the `.sln` (add C# projects) and `.vcxproj` (add references)
 
 The command is idempotent — safe to re-run after adding or removing modules.
+At the moment it is still a separate step from `react-native run-windows`, so a
+fresh clone should run it before the first Windows build.
 
 ### Module Package Config
 
@@ -201,6 +207,7 @@ expo-modules-windows-core/
 | Document | Description |
 |----------|-------------|
 | [DESIGN.md](docs/DESIGN.md) | Architecture overview and design decisions |
+| [IMPLEMENTATION_PROMPTS.md](docs/IMPLEMENTATION_PROMPTS.md) | Current implementation status and next milestones |
 | [AUTOLINKING.md](docs/AUTOLINKING.md) | Autolinking guide for module authors |
 | [BUILD_SYSTEM.md](docs/BUILD_SYSTEM.md) | Build system, project structure, MSBuild targets |
 | [CODE_FLOW.md](docs/CODE_FLOW.md) | End-to-end call flow from JS to C# and back |

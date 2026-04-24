@@ -1,6 +1,14 @@
 # Step 3: Build Integration — Post-Mortem
 
-Lessons learned during implementation of build integration (MSBuild targets, solution structure, managed DLL deployment).
+Lessons learned during implementation of build integration (MSBuild targets,
+solution structure, managed DLL deployment).
+
+> Historical note:
+> Some of the build-shape tradeoffs described here were later superseded by the
+> Step 5 autolinking/build integration work. In particular, the example app now
+> uses a generated `ExpoModulesAutolinked` hub project and includes managed
+> projects in the example solution under a `Managed` folder. See
+> `docs/BUILD_SYSTEM.md` for the current structure.
 
 ## Issue 1: Member Function Pointer Cast
 
@@ -46,25 +54,12 @@ The original code assumed only one .NET SDK version would be installed.
 
 The CppWinRT NuGet package (`Microsoft.Windows.CppWinRT`) hooks into the build to resolve WinMD references from all projects in the solution. When it encounters an SDK-style C# project, it tries to include it in the resolution chain, which conflicts with its own dependency ordering.
 
-**Current workaround:** C# projects are **not** included in the `.sln` file. Instead, they are built via `dotnet build` Exec tasks in custom MSBuild `.targets` files (`ExpoManagedDeploy.targets`, `ExpoExampleDeploy.targets`), imported by the C++ vcxproj files.
+**What happened next:** This did not remain the final shape. The app-side build
+now uses:
 
-**TODO — Future Resolution:**
+1. a generated `ExpoModulesAutolinked.csproj` hub project,
+2. C++ `ProjectReference` metadata tuned for non-WinMD managed references, and
+3. `CppWinRTGenerateWindowsMetadata=false` in the app vcxproj.
 
-This workaround means C# projects don't appear in the VS Solution Explorer, which hurts developer experience (no IntelliSense navigation, no unified debugging, no build order visibility). Possible solutions to investigate:
-
-1. **Separate C# solution/project group:** Use a VS solution filter (`.slnf`) or nested solution that only contains C# projects, opened side-by-side.
-
-2. **`ProjectReference` with `ReferenceOutputAssembly=false`:** Add the C# project as a dependency without WinMD resolution:
-   ```xml
-   <ProjectReference Include="...\Expo.Modules.Core.csproj">
-     <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-     <SkipGetTargetFrameworkProperties>true</SkipGetTargetFrameworkProperties>
-     <Private>false</Private>
-   </ProjectReference>
-   ```
-
-3. **`BuildDependsOn` property:** Instead of `BeforeTargets`, inject the dotnet build into the dependency chain more surgically to avoid the CppWinRT cycle.
-
-4. **CppWinRT configuration:** Look for CppWinRT properties that exclude specific projects from WinMD resolution (e.g., `CppWinRTExcludeProjectReferences`).
-
-5. **Solution folders with build-excluded projects:** Add C# projects to a "Managed" solution folder but uncheck "Build" in Configuration Manager — for code navigation only, while the targets handle actual building.
+That lets the example solution include managed projects for navigation and build
+ordering without going back to the original failing shape.

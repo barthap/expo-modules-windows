@@ -1,33 +1,53 @@
-# Implementation Prompts — Index
+# Implementation Status
 
-Detailed prompts for each implementation step live in `docs/prompts/`.
-Use these with Plan agents or implementation agents in new sessions.
+This repo is past the original step-by-step implementation phase.
+The earlier agent prompts under `docs/prompts/` were useful while building the
+MVP, but they are no longer the source of truth for the project state and have
+been retired.
 
-## Status
+## Current State
 
-| # | Prompt | Status | File |
-|---|--------|--------|------|
-| — | HostFXR PoC (standalone) | **DONE** — all tests pass | `docs/HOSTFXR_POC_RESULTS.md` |
-| — | DSL Research | **DONE** | `docs/RESEARCH_DSL.md` |
-| — | Autolinking Research | **DONE** | `docs/RESEARCH_AUTOLINKING.md` |
-| 1 | C# Core Library | **DONE** (fc390b2) | `docs/prompts/01_CSHARP_CORE_LIBRARY.md` |
-| 2 | C++ ExpoModulesHostObject | **DONE** (fd61716) | `docs/prompts/02_CPP_HOST_OBJECT.md` |
-| 3 | Build Integration | **DONE** (90c7b07) | `docs/prompts/03_BUILD_INTEGRATION.md` |
-| 4 | Autolinking Fork | **DONE** (07f9aae) | `docs/prompts/04_AUTOLINKING_FORK.md` |
-| 5 | Autolinking ↔ Build Integration | **TODO** — next up | `docs/prompts/05_AUTOLINKING_BUILD_INTEGRATION.md` |
+The core MVP stack is implemented in-tree:
 
-## Dependency Graph
+| Area | Status | Notes |
+|------|--------|-------|
+| HostFXR proof of concept | Done | Standalone host loading validated before integrating with RNW. |
+| C# core library (`Expo.Modules.Core`) | Done | Module DSL, registry, JSON type conversion, lifecycle, events, interop entry points. |
+| C++ host bridge | Done | Single TurboModule, JSI HostObject, HostFXR runtime loader, async callback path. |
+| Build integration | Done | Managed deployment targets, `nethost` packaging, VS/MSIX build path working. |
+| Windows Expo autolinking | Done | `autolink-windows` command, generated hub project, `.sln`/`.vcxproj` patching, generated provider and deploy targets. |
 
-```
-HostFXR PoC (done) ──┐
-DSL Research (done) ──┼──→ [1] C# Core Library (done) ──→ [2] C++ HostObject (done) ──→ [3] Build Integration (done) ─┐
-                      │                                                                                              │
-Autolinking Research ─┴──→ [4] Autolinking Fork (done) ────────────────────────────────────────────────────────────┴──→ [5] Autolinking ↔ Build
-```
+## What Still Needs Polish
 
-## How to Use
+These are not new platform pillars, but they still matter:
 
-1. Start a new session (fresh context)
-2. Read the relevant prompt file: `docs/prompts/0X_*.md`
-3. The prompt contains full context — no other reading needed
-4. Reference research docs if the agent needs more detail
+- Tighten the consumer packaging story so the Windows autolinking CLI is
+  delivered and discoverable outside this repo.
+- Hook the Expo autolinking command into the example app workflow so a fresh
+  clone does not depend on pre-generated local artifacts.
+- Continue aligning docs with the implemented Step 5 build shape.
+
+## Next Major Milestones
+
+The next substantial feature tracks are the ones described in the design docs:
+
+1. **NativeAOT mode and typed dispatch**
+   Replace the HostFXR-only MVP path with a production-grade alternative based
+   on source generation, typed exports, and NativeAOT-friendly marshaling.
+   See `docs/DESIGN.md`, Phase 3.
+
+2. **View / native React component support**
+   Add Fabric-compatible native view support from C# with a view DSL and C++
+   view manager bridge. See `docs/DESIGN.md`, Phase 4 and `docs/DESIGN_VIEWS.md`.
+
+3. **Developer experience and packaging**
+   Templates, NuGet packaging, hot reload, and example modules remain a later
+   phase after the two platform milestones above. See `docs/DESIGN.md`, Phase 5.
+
+## Recommended Docs To Read
+
+- `docs/DESIGN.md`: architecture and long-term roadmap
+- `docs/BUILD_SYSTEM.md`: current build and solution shape
+- `docs/AUTOLINKING.md`: current Windows autolinking flow
+- `docs/CODE_FLOW.md`: runtime call path from JS to C#
+- `docs/DESIGN_VIEWS.md`: detailed view-system design and open questions
