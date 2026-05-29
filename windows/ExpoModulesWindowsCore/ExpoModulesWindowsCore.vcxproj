@@ -125,6 +125,7 @@
     <ClInclude Include="ExpoViewManager.h" />
     <ClInclude Include="ExpoMarshal.h" />
     <ClInclude Include="ExpoAsyncCallback.h" />
+    <ClInclude Include="ExpoEventBridge.h" />
     <ClInclude Include="ReactPackageProvider.h">
       <DependentUpon>ReactPackageProvider.idl</DependentUpon>
     </ClInclude>
