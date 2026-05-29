@@ -82,6 +82,7 @@
       <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
       <AdditionalIncludeDirectories>
         $(MSBuildThisFileDirectory);
+        $(MSBuildThisFileDirectory)common\cpp;
         $(MSBuildThisFileDirectory)vendor;
         $(NetHostDir);
         %(AdditionalIncludeDirectories)
@@ -107,6 +108,15 @@
   </ItemDefinitionGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemGroup>
+    <ClInclude Include="common\cpp\JSIUtils.h" />
+    <ClInclude Include="common\cpp\ObjectDeallocator.h" />
+    <ClInclude Include="common\cpp\EventEmitter.h" />
+    <ClInclude Include="common\cpp\NativeModule.h" />
+    <ClInclude Include="common\cpp\SharedObject.h" />
+    <ClInclude Include="common\cpp\SharedRef.h" />
+    <ClInclude Include="common\cpp\LazyObject.h" />
+    <ClInclude Include="common\cpp\TypedArray.h" />
+    <ClInclude Include="common\cpp\BridgelessJSCallInvoker.h" />
     <ClInclude Include="ExpoModulesWindowsCore.h" />
     <ClInclude Include="ExpoModuleHost.h" />
     <ClInclude Include="ExpoModulesHostObject.h" />
@@ -128,6 +138,30 @@
     <ClCompile Include="ExpoModuleObject.cpp" />
     <ClCompile Include="ExpoViewManager.cpp" />
     <ClCompile Include="ExpoMarshal.cpp" />
+    <ClCompile Include="common\cpp\JSIUtils.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="common\cpp\ObjectDeallocator.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="common\cpp\EventEmitter.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="common\cpp\NativeModule.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="common\cpp\SharedObject.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="common\cpp\SharedRef.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="common\cpp\LazyObject.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="common\cpp\TypedArray.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
