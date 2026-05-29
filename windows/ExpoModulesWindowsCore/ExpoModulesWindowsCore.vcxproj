@@ -120,6 +120,7 @@
     <ClInclude Include="ExpoModulesWindowsCore.h" />
     <ClInclude Include="ExpoModuleHost.h" />
     <ClInclude Include="ExpoModulesHostObject.h" />
+    <ClInclude Include="ExpoModuleDecorator.h" />
     <ClInclude Include="ExpoModuleObject.h" />
     <ClInclude Include="ExpoViewManager.h" />
     <ClInclude Include="ExpoMarshal.h" />
@@ -135,6 +136,7 @@
     <ClCompile Include="ExpoModulesWindowsCore.cpp" />
     <ClCompile Include="ExpoModuleHost.cpp" />
     <ClCompile Include="ExpoModulesHostObject.cpp" />
+    <ClCompile Include="ExpoModuleDecorator.cpp" />
     <ClCompile Include="ExpoModuleObject.cpp" />
     <ClCompile Include="ExpoViewManager.cpp" />
     <ClCompile Include="ExpoMarshal.cpp" />
