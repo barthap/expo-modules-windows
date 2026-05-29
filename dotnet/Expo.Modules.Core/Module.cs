@@ -27,13 +27,16 @@ public abstract class Module
         if (EventCallbackPtr == IntPtr.Zero)
             return;
 
-        var payload = new { moduleIndex = ModuleIndex, name, data };
-        var json = TypeConverter.Serialize(payload);
+        var nameBytes = Encoding.UTF8.GetBytes(name);
+        var dataBytes = data != null ? TypeConverter.Serialize(data) : Array.Empty<byte>();
 
-        fixed (byte* ptr = json)
+        fixed (byte* namePtr = nameBytes)
+        fixed (byte* dataPtr = dataBytes)
         {
-            var callback = (delegate* unmanaged<byte*, int, IntPtr, void>)EventCallbackPtr;
-            callback(ptr, json.Length, EventUserDataPtr);
+            // Signature: (int moduleIndex, byte* eventNameUtf8, int eventNameLen,
+            //             byte* dataJson, int dataLen, IntPtr userData)
+            var callback = (delegate* unmanaged<int, byte*, int, byte*, int, IntPtr, void>)EventCallbackPtr;
+            callback(ModuleIndex, namePtr, nameBytes.Length, dataPtr, dataBytes.Length, EventUserDataPtr);
         }
     }
 
