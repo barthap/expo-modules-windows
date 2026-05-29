@@ -114,7 +114,12 @@ export default function App() {
           title="Show Constants"
           onPress={() => {
             try {
-              const c = getExampleModule()?.constants ?? 'No getConstants()';
+              const mod = getExampleModule();
+              const c = {
+                platform: mod?.platform,
+                version: mod?.version,
+                isWindows: mod?.isWindows,
+              };
               setConstants(JSON.stringify(c, null, 2));
             } catch (e: any) {
               setConstants(`Error: ${e.message}`);
