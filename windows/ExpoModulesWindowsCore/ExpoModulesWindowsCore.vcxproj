@@ -85,6 +85,7 @@
         $(MSBuildThisFileDirectory)common\cpp;
         $(MSBuildThisFileDirectory)vendor;
         $(NetHostDir);
+        $(ReactNativeWindowsDir)..\react-native\ReactCommon;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
     </ClCompile>
