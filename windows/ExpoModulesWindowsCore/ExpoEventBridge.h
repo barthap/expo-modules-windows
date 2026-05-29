@@ -12,13 +12,12 @@
 #include "ExpoModulesHostObject.h"
 #include "ExpoModuleHost.h"
 #include "EventEmitter.h"
-#include "LazyObject.h"
 
 namespace expo {
 
 struct EventBridgeContext {
     std::shared_ptr<facebook::react::CallInvoker> callInvoker;
-    ExpoModulesHostObject* hostObject;
+    std::shared_ptr<ExpoModulesHostObject> hostObject;
     ExpoModuleHost* host;
 };
 
@@ -40,7 +39,7 @@ inline void __stdcall EventCallbackTrampoline(
                      static_cast<size_t>(dataLen));
 
     auto callInvoker = ctx->callInvoker;
-    auto* hostObj = ctx->hostObject;
+    auto hostObj = ctx->hostObject;
 
     callInvoker->invokeAsync([hostObj, moduleIndex, eventName = std::move(eventName),
                               data = std::move(data)](facebook::jsi::Runtime& rt) {
@@ -48,18 +47,13 @@ inline void __stdcall EventCallbackTrampoline(
 
         auto* moduleObjPtr = hostObj->getModuleJsObject(moduleIndex);
         if (!moduleObjPtr) {
-            // Module never accessed from JS — silently drop the event
             return;
         }
 
-        // Unwrap LazyObject if module hasn't been fully initialized yet.
-        // unwrapObjectIfNecessary returns const Object&; emitEvent takes Object& (non-const),
-        // so we const_cast here. The object is not actually mutated by emitEvent — it only
-        // reads the NativeState attached to it.
-        const Object& constEmitter = expo::LazyObject::unwrapObjectIfNecessary(rt, *moduleObjPtr);
-        Object& emitter = const_cast<Object&>(constEmitter);
+        // m_moduleJsObjects stores the unwrapped NativeModule object directly
+        // (set during LazyObject initialization), so no unwrapping needed.
+        Object& emitter = *moduleObjPtr;
 
-        // Build argument list and emit the event
         if (!data.empty()) {
             auto jsonBuf = reinterpret_cast<const uint8_t*>(data.data());
             Value dataVal = Value::createFromJsonUtf8(rt, jsonBuf, data.size());

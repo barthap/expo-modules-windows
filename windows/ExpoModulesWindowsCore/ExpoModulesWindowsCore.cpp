@@ -45,14 +45,14 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
 
             // 3. Install modules host object on global.expo.modules
             auto hostObj = std::make_shared<expo::ExpoModulesHostObject>(host, callInvoker);
-            auto hostObjRaw = hostObj.get();
             Object expoObj = rt.global().getPropertyAsObject(rt, "expo");
             expoObj.setProperty(rt, "modules",
-                Object::createFromHostObject(rt, std::move(hostObj)));
+                Object::createFromHostObject(rt, hostObj));
 
-            // 4. Wire up event bridge
+            // 4. Wire up event bridge — EventBridgeContext holds a shared_ptr
+            // to keep the HostObject alive independently of JSI's GC.
             auto* eventCtx = new expo::EventBridgeContext{
-                callInvoker, hostObjRaw, &host
+                callInvoker, hostObj, &host
             };
             host.SetEventCallback(
                 reinterpret_cast<void*>(&expo::EventCallbackTrampoline),

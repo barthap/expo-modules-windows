@@ -34,10 +34,9 @@ private:
     ExpoModuleHost& m_host;
     std::shared_ptr<facebook::react::CallInvoker> m_callInvoker;
 
-    // name -> LazyObject wrapper (cached on first access)
+    // All map access must occur on the JS thread (get() via JSI, getModuleJsObject()
+    // via callInvoker->invokeAsync). No mutex needed.
     std::unordered_map<std::string, std::shared_ptr<facebook::jsi::Object>> m_moduleCache;
-
-    // moduleIndex -> decorated NativeModule JS object (populated when LazyObject initializes)
     std::unordered_map<int, std::shared_ptr<facebook::jsi::Object>> m_moduleJsObjects;
 };
 
