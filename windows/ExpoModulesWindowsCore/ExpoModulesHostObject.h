@@ -1,5 +1,5 @@
-// ExpoModulesHostObject.h — Top-level JSI HostObject installed on global.expo.modules.
-// Maps module names to cached ExpoModuleObject instances.
+// ExpoModulesHostObject.h — Top-level JSI HostObject on global.expo.modules.
+// Maps module names to LazyObject-wrapped NativeModule instances.
 
 #pragma once
 
@@ -26,10 +26,19 @@ public:
     std::vector<facebook::jsi::PropNameID> getPropertyNames(
         facebook::jsi::Runtime& rt) override;
 
+    // Returns the decorated JS object for a module by index, or nullptr
+    // if the module hasn't been accessed from JS yet.
+    facebook::jsi::Object* getModuleJsObject(int moduleIndex);
+
 private:
     ExpoModuleHost& m_host;
     std::shared_ptr<facebook::react::CallInvoker> m_callInvoker;
-    std::unordered_map<std::string, std::shared_ptr<facebook::jsi::HostObject>> m_moduleCache;
+
+    // name -> LazyObject wrapper (cached on first access)
+    std::unordered_map<std::string, std::shared_ptr<facebook::jsi::Object>> m_moduleCache;
+
+    // moduleIndex -> decorated NativeModule JS object (populated when LazyObject initializes)
+    std::unordered_map<int, std::shared_ptr<facebook::jsi::Object>> m_moduleJsObjects;
 };
 
 } // namespace expo
