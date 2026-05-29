@@ -3,6 +3,13 @@
 #include "ExpoModulesWindowsCore.h"
 #include "ExpoModuleHost.h"
 #include "ExpoModulesHostObject.h"
+#include "ExpoEventBridge.h"
+
+// Expo shared C++ layer
+#include "EventEmitter.h"
+#include "SharedObject.h"
+#include "SharedRef.h"
+#include "NativeModule.h"
 
 #include <filesystem>
 #include <JSI/JsiApiContext.h>
@@ -14,33 +21,42 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
     m_context = reactContext;
 
     try {
-        // Initialize the .NET runtime and all C# modules
+        // Initialize the .NET runtime and all C# modules (on REACT_INIT thread)
         auto& host = expo::ExpoModuleHost::Instance();
         host.InitializeDefault();
 
-        // Install the HostObject on global.expo.modules via callInvoker.
-        // invokeAsync queues onto the JS thread — guaranteed to run once the
-        // runtime is live, unlike ExecuteJsi which silently drops from REACT_INIT.
         auto callInvoker = reactContext.CallInvoker();
-        auto hostObj = std::make_shared<expo::ExpoModulesHostObject>(host, callInvoker);
 
-        callInvoker->invokeAsync([hostObj = std::move(hostObj)](facebook::jsi::Runtime& rt) {
+        callInvoker->invokeAsync([&host, callInvoker](facebook::jsi::Runtime& rt) {
             using namespace facebook::jsi;
 
-            auto global = rt.global();
+            // 1. Create global.expo
+            Object expo(rt);
+            rt.global().setProperty(rt, "expo", expo);
 
-            // Get or create global.expo
-            Value expoVal = global.getProperty(rt, "expo");
-            Object expo = expoVal.isObject()
-                ? expoVal.getObject(rt)
-                : Object(rt);
+            // 2. Install class hierarchy (from common/cpp/)
+            expo::EventEmitter::installClass(rt);
+            expo::SharedObject::installBaseClass(rt, [](expo::SharedObject::ObjectId) {
+                // Releaser — called when SharedObject is GC'd.
+                // Future: release C# shared objects. No-op for MVP.
+            });
+            expo::SharedRef::installBaseClass(rt);
+            expo::NativeModule::installClass(rt);
 
-            // Set global.expo.modules = ExpoModulesHostObject
-            expo.setProperty(rt,
-                "modules",
-                Object::createFromHostObject(rt, hostObj));
+            // 3. Install modules host object on global.expo.modules
+            auto hostObj = std::make_shared<expo::ExpoModulesHostObject>(host, callInvoker);
+            auto hostObjRaw = hostObj.get();
+            Object expoObj = rt.global().getPropertyAsObject(rt, "expo");
+            expoObj.setProperty(rt, "modules",
+                Object::createFromHostObject(rt, std::move(hostObj)));
 
-            global.setProperty(rt, "expo", std::move(expo));
+            // 4. Wire up event bridge
+            auto* eventCtx = new expo::EventBridgeContext{
+                callInvoker, hostObjRaw, &host
+            };
+            host.SetEventCallback(
+                reinterpret_cast<void*>(&expo::EventCallbackTrampoline),
+                reinterpret_cast<void*>(eventCtx));
         });
     }
     catch (const std::exception& ex) {
@@ -65,8 +81,6 @@ double ExpoModulesWindowsCore::multiply(double a, double b) noexcept {
 }
 
 bool ExpoModulesWindowsCore::install() noexcept {
-    // No-op — kept for backward compat with the TurboModule spec.
-    // HostObject is now installed via callInvoker in REACT_INIT.
     return m_initError.empty();
 }
 
