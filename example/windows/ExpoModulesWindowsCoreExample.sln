@@ -17,6 +17,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExpoModulesAutolinked", "Ex
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExampleModule", "..\modules\ExampleModule\ExampleModule.csproj", "{6607676A-E61D-DF2F-79C7-BCD6CDB9E3BC}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExpoModulesCore", "..\node_modules\expo-desktop-modules-core\windows\ExpoModulesCore\ExpoModulesCore.vcxproj", "{45CCA11B-4C7D-406D-9DCB-A823993FC653}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -111,6 +113,18 @@ Global
 		{6607676A-E61D-DF2F-79C7-BCD6CDB9E3BC}.Release|x86.Build.0 = Release|x86
 		{6607676A-E61D-DF2F-79C7-BCD6CDB9E3BC}.Release|ARM64.ActiveCfg = Release|ARM64
 		{6607676A-E61D-DF2F-79C7-BCD6CDB9E3BC}.Release|ARM64.Build.0 = Release|ARM64
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Debug|x64.ActiveCfg = Debug|x64
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Debug|x64.Build.0 = Debug|x64
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Debug|x86.ActiveCfg = Debug|Win32
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Debug|x86.Build.0 = Debug|Win32
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Debug|ARM64.Build.0 = Debug|ARM64
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Release|x64.ActiveCfg = Release|x64
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Release|x64.Build.0 = Release|x64
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Release|x86.ActiveCfg = Release|Win32
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Release|x86.Build.0 = Release|Win32
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Release|ARM64.ActiveCfg = Release|ARM64
+		{45CCA11B-4C7D-406D-9DCB-A823993FC653}.Release|ARM64.Build.0 = Release|ARM64
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{2C2B0639-B019-8841-EEC4-3FC5BA0723EE} = {40328D4F-21C5-4A8F-99BD-9C03C0DA4E6A}

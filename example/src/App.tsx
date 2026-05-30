@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Text, View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { Text, View, StyleSheet, Pressable, ScrollView, TurboModuleRegistry } from 'react-native';
 import { install, multiply, requireNativeViewManager } from 'expo-modules-windows-core';
+
+// Trigger expo-desktop's module init (synchronous REACT_INIT with jsi::Runtime&)
+// before our install() queues async work. This sets up global.expo with stubs.
+TurboModuleRegistry.get('ExpoMainRuntimeInstaller');
 
 const ExpoColorBox = requireNativeViewManager<{
   color?: string;
@@ -13,6 +17,20 @@ function getExampleModule() {
 
 function getInitError(): string | undefined {
   return (global as any).expo?.__initError;
+}
+
+function getWindowsCoreMode(): string {
+  return (global as any).expo?.__windowsCoreMode ?? 'not initialized';
+}
+
+function getExpoModuleNames(): string[] {
+  const modules = (global as any).expo?.modules;
+  if (!modules) return [];
+  try {
+    return Object.keys(modules);
+  } catch {
+    return [];
+  }
 }
 
 function Btn({ title, onPress }: { title: string; onPress: () => void }) {
@@ -54,8 +72,10 @@ export default function App() {
       <Text style={styles.title}>Expo Modules Windows Core</Text>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>TurboModule (sanity check)</Text>
-        <Text>multiply(3, 7) = {turboMultiply}</Text>
+        <Text style={styles.sectionTitle}>Runtime Info</Text>
+        <Text>Mode: {getWindowsCoreMode()}</Text>
+        <Text>Modules: {getExpoModuleNames().join(', ') || 'none'}</Text>
+        <Text>TurboModule multiply(3, 7) = {turboMultiply}</Text>
       </View>
 
       <View style={styles.section}>

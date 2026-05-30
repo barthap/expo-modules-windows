@@ -6348,6 +6348,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"expo-desktop-modules-core@npm:^54.0.9":
+  version: 54.0.9
+  resolution: "expo-desktop-modules-core@npm:54.0.9"
+  peerDependencies:
+    react-native: ~0.81.0
+    react-native-windows: ~0.81.0
+  checksum: 45ded6e51349583368ef712f26d0738d8e71867511c6f293fdcbfa91502f4ac4b608f8ad7d645b26dc6014d68ee568e12593a03fc0b948c850291446d511c99c
+  languageName: node
+  linkType: hard
+
 "expo-modules-windows-core-example@workspace:example":
   version: 0.0.0-use.local
   resolution: "expo-modules-windows-core-example@workspace:example"
@@ -6365,6 +6375,7 @@ __metadata:
     "@rnx-kit/jest-preset": ^0.1.17
     "@types/react": ^19.1.0
     escape-string-regexp: ^4.0.0
+    expo-desktop-modules-core: ^54.0.9
     expo-modules-windows-core: "workspace:*"
     react: 19.1.0
     react-native: 0.81.5

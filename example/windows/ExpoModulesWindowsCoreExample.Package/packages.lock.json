@@ -22,12 +22,16 @@
         "resolved": "10.0.22621.756",
         "contentHash": "7ZL2sFSioYm1Ry067Kw1hg0SCcW5kuVezC2SwjGbcPE61Nn+gTbH86T73G3LcEOVj0S3IZzNuE/29gZvOLS7VA=="
       },
+      "expomodulescore": {
+        "type": "Project"
+      },
       "expomoduleswindowscore": {
         "type": "Project"
       },
       "expomoduleswindowscoreexample": {
         "type": "Project",
         "dependencies": {
+          "ExpoModulesCore": "[1.0.0, )",
           "ExpoModulesWindowsCore": "[1.0.0, )"
         }
       }

@@ -1,0 +1,50 @@
+diff --git a/windows/ExpoModulesCore/ExpoModulesCore.vcxproj b/windows/ExpoModulesCore/ExpoModulesCore.vcxproj
+index 470444c527c0ba4fe2ffa4e060756045e5b4d758..3bd682fafcd733a4638761e5eefa22f3a383a85d 100644
+--- a/windows/ExpoModulesCore/ExpoModulesCore.vcxproj
++++ b/windows/ExpoModulesCore/ExpoModulesCore.vcxproj
+@@ -104,6 +104,9 @@
+       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+     </ClCompile>
+   </ItemDefinitionGroup>
++  <PropertyGroup>
++    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
++  </PropertyGroup>
+   <PropertyGroup Label="UserMacros" />
+   <ItemGroup>
+     <ClInclude Include="..\..\common\cpp\BridgelessJSCallInvoker.h" />
+diff --git a/windows/ExpoModulesCore/MainRuntimeInstaller.h b/windows/ExpoModulesCore/MainRuntimeInstaller.h
+index dcec5cfbc9ef0d4a1bdcb59f46bf344e868501f5..a449413498fca600087461a45bad3a2bd274b865 100644
+--- a/windows/ExpoModulesCore/MainRuntimeInstaller.h
++++ b/windows/ExpoModulesCore/MainRuntimeInstaller.h
+@@ -23,6 +23,10 @@ namespace jsi = facebook::jsi;
+ 
+ namespace winrt::ExpoDesktopModulesCore {
+ 
++// REACT_EAGER_TURBO_MODULE was removed in RNW 0.81; fall back to REACT_TURBO_MODULE
++#ifndef REACT_EAGER_TURBO_MODULE
++#define REACT_EAGER_TURBO_MODULE REACT_TURBO_MODULE
++#endif
+ REACT_EAGER_TURBO_MODULE(ExpoMainRuntimeInstaller);
+ struct ExpoMainRuntimeInstaller {
+   using ModuleSpec = ExpoDesktopModulesCoreCodegen::ExpoMainRuntimeInstallerSpec;
+@@ -56,9 +60,17 @@ struct ExpoMainRuntimeInstaller {
+     // global.nativeModuleProxy.ExpoMainRuntimeInstaller;
+     // global.nativeModuleProxy.NativeUnimoduleProxy;
+     // global.nativeModuleProxy.ExpoAsset;
+-    jsi::Object nativeModuleProxy = global.getPropertyAsObject(runtime, "nativeModuleProxy");
+-    jsi::Object NativeUnimoduleProxy = nativeModuleProxy.getPropertyAsObject(runtime, "NativeUnimoduleProxy");
+-    jsi::Object ExpoAsset = nativeModuleProxy.getPropertyAsObject(runtime, "ExpoAsset");
++    // Guard: nativeModuleProxy may not exist in RNW 0.81 new architecture
++    jsi::Value nativeModuleProxyVal = global.getProperty(runtime, "nativeModuleProxy");
++    jsi::Object NativeUnimoduleProxy = jsi::Object(runtime);
++    jsi::Object ExpoAsset = jsi::Object(runtime);
++    if (nativeModuleProxyVal.isObject()) {
++      jsi::Object nativeModuleProxy = nativeModuleProxyVal.getObject(runtime);
++      jsi::Value nupVal = nativeModuleProxy.getProperty(runtime, "NativeUnimoduleProxy");
++      if (nupVal.isObject()) NativeUnimoduleProxy = nupVal.getObject(runtime);
++      jsi::Value eaVal = nativeModuleProxy.getProperty(runtime, "ExpoAsset");
++      if (eaVal.isObject()) ExpoAsset = eaVal.getObject(runtime);
++    }
+ 
+     // Stub this module:
+     jsi::Object ExponentConstants = jsi::Object(runtime);

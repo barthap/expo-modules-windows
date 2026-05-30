@@ -6,6 +6,9 @@
 // Includes from expo-modules-windows-core
 #include <winrt/ExpoModulesWindowsCore.h>
 
+// Includes from expo-desktop-modules-core
+#include <winrt/ExpoModulesCore.h>
+
 namespace winrt::Microsoft::ReactNative
 {
 
@@ -13,6 +16,8 @@ void RegisterAutolinkedNativeModulePackages(winrt::Windows::Foundation::Collecti
 { 
     // IReactPackageProviders from expo-modules-windows-core
     packageProviders.Append(winrt::ExpoModulesWindowsCore::ReactPackageProvider());
+    // IReactPackageProviders from expo-desktop-modules-core
+    packageProviders.Append(winrt::ExpoModulesCore::ReactPackageProvider());
 }
 
 }

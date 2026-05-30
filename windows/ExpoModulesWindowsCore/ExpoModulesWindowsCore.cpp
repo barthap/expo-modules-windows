@@ -65,7 +65,11 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
             expoObj.setProperty(rt, "modules",
                 Object::createFromHostObject(rt, hostObj));
 
-            // 5. Wire up event bridge
+            // 5. Set mode indicator for debugging
+            expoObj.setProperty(rt, "__windowsCoreMode",
+                String::createFromUtf8(rt, expoDesktopPresent ? "coexistence" : "standalone"));
+
+            // 6. Wire up event bridge
             auto* eventCtx = new expo::EventBridgeContext{
                 callInvoker, hostObj, &host
             };

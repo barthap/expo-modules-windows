@@ -6,5 +6,9 @@
     <ProjectReference Include="$(ProjectDir)..\..\..\windows\ExpoModulesWindowsCore\ExpoModulesWindowsCore.vcxproj">
       <Project>{8C8BF823-DEDA-4E6D-BC18-B6C97D6D93F0}</Project>
     </ProjectReference>
+    <!-- Projects from expo-desktop-modules-core -->
+    <ProjectReference Include="$(ProjectDir)..\..\node_modules\expo-desktop-modules-core\windows\ExpoModulesCore\ExpoModulesCore.vcxproj">
+      <Project>{45CCA11B-4C7D-406D-9DCB-A823993FC653}</Project>
+    </ProjectReference>
   </ItemGroup>
 </Project>

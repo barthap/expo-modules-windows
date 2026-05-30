@@ -213,5 +213,8 @@
       "namespace": "ExpoModulesWindowsCore",
       "template": "cpp-lib"
     }
+  },
+  "resolutions": {
+    "expo-desktop-modules-core@^54.0.9": "patch:expo-desktop-modules-core@npm%3A54.0.9#./.yarn/patches/expo-desktop-modules-core-npm-54.0.9-2fabdc7f11.patch"
   }
 }
