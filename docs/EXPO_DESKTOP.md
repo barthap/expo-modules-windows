@@ -12,6 +12,9 @@ The [expo-desktop](https://github.com/shirakaba/expo-desktop) project by [@nicol
 
 We vendor the `common/cpp/` directory from expo-desktop into `windows/ExpoModulesWindowsCore/common/cpp/`. These are the MSVC-patched versions of Expo's shared C++ layer, pinned to **Expo SDK 54**.
 
+**Upstream commit:** [`bcdf485`](https://github.com/shirakaba/expo-desktop/commit/bcdf48576fe52db755b5277827821df53505dc88)
+**Source path:** `packages/expo-desktop-modules-core/common/cpp/`
+
 ### Vendored Files (17 files)
 
 | File | Purpose |
