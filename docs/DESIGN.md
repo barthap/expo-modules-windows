@@ -59,14 +59,18 @@ We replicate this pattern for Windows, with C# as the module language.
 │                     JavaScript                        │
 │  global.expo.modules.Battery.getBatteryLevel()        │
 └───────────────────────┬──────────────────────────────┘
-                        │ JSI HostObject property access
+                        │ JSI property access on LazyObject
 ┌───────────────────────▼──────────────────────────────┐
+│   Expo Shared C++ Layer (vendored from expo-desktop)  │
+│  - EventEmitter, NativeModule, SharedObject, SharedRef│
+│  - LazyObject (deferred module initialization)        │
+│  - Class hierarchy on global.expo.*                   │
+├───────────────────────────────────────────────────────┤
 │        C++ ExpoModulesHostObject (single TurboModule) │
 │  - Registered as one REACT_MODULE with RNW            │
-│  - Implements jsi::HostObject                         │
-│  - get("Battery") → dispatches to C# module           │
-│  - Loads .NET runtime once at init                    │
-│  - Holds module registry from autolinking             │
+│  - get("Battery") → LazyObject → NativeModule         │
+│  - decorateModuleObject() sets functions/constants     │
+│  - Loads .NET runtime once at init via HostFXR        │
 └───────────────────────┬──────────────────────────────┘
                         │ HostFXR / NativeAOT interop
 ┌───────────────────────▼──────────────────────────────┐
@@ -87,6 +91,8 @@ We replicate this pattern for Windows, with C# as the module language.
 │  WinRT / Win32 / .NET / WinUI 3                       │
 └──────────────────────────────────────────────────────┘
 ```
+
+The shared C++ layer is vendored from [expo-desktop](https://github.com/shirakaba/expo-desktop) (Expo SDK 54, MSVC-patched). It provides the same JS class hierarchy as iOS/Android, so `instanceof NativeModule` works and `addListener()` returns proper subscription objects. See [EXPO_DESKTOP.md](EXPO_DESKTOP.md) for details.
 
 ### Autolinking Flow
 
@@ -135,13 +141,17 @@ A .NET class library (`net9.0-windows10.0.19041.0`) containing:
 
 #### 1.2 C++ Host (`ExpoModulesHostObject`)
 
-A single C++ TurboModule + JSI HostObject:
+A single C++ TurboModule that installs Expo's shared C++ class hierarchy and a JSI HostObject:
 
-- **`ExpoModulesHostObject`** — implements `jsi::HostObject`:
-  - Registered as a single `REACT_MODULE` (`ExpoModulesCore`)
-  - On init: loads .NET runtime via HostFXR, calls C# to get module definitions
-  - `get(runtime, name)` → returns a per-module JSI object with functions
-  - Each module's functions are `jsi::HostFunction` wrappers that dispatch to C#
+- **Expo shared C++ layer** (`common/cpp/`, vendored from expo-desktop):
+  - `EventEmitter` — installed on `global.expo.EventEmitter`, provides `addListener`/`removeListeners`/`emit` with NativeState-backed subscriptions
+  - `NativeModule` — inherits EventEmitter, installed on `global.expo.NativeModule`
+  - `SharedObject` / `SharedRef` — reference-counted native handle wrappers
+  - `LazyObject` — defers module creation until first property access
+- **`ExpoModulesHostObject`** — implements `jsi::HostObject` on `global.expo.modules`:
+  - `get(runtime, name)` → creates a `LazyObject` that, on first access, creates a `NativeModule` instance and decorates it with C# module functions/constants/events
+- **`ExpoModuleDecorator`** — sets functions, constants, events as plain JS properties on a `NativeModule` instance
+- **`ExpoEventBridge`** — trampoline that dispatches C# events to JS via `EventEmitter::emitEvent()`
 - **`ExpoModuleHost`** — .NET runtime loader:
   - Loads .NET via HostFXR (once)
   - Resolves `[UnmanagedCallersOnly]` entry points from C# assembly
@@ -450,10 +460,23 @@ expo-modules-windows-core/          # This repo — the core library
 ├── src/                            # TypeScript (JS-side API, EventEmitter, etc.)
 ├── windows/
 │   ├── ExpoModulesWindowsCore/     # C++ host (single TurboModule)
-│   │   ├── ExpoModulesHostObject.h/cpp  # JSI HostObject implementation
-│   │   ├── ExpoModuleHost.h/cpp    # HostFXR .NET runtime loader
-│   │   ├── Marshaling.h/cpp        # JSI ↔ JSON conversion
-│   │   └── ... (existing RNW files)
+│   │   ├── common/cpp/             # Vendored Expo shared C++ layer (from expo-desktop)
+│   │   │   ├── EventEmitter.h/cpp  # NativeState-backed event subscriptions
+│   │   │   ├── NativeModule.h/cpp  # Inherits EventEmitter
+│   │   │   ├── SharedObject.h/cpp  # GC-released native handles
+│   │   │   ├── SharedRef.h/cpp     # Extends SharedObject
+│   │   │   ├── LazyObject.h/cpp    # Deferred JSI HostObject init
+│   │   │   ├── JSIUtils.h/cpp      # Class creation, prototype chains
+│   │   │   ├── ObjectDeallocator.h/cpp  # NativeState destructor
+│   │   │   ├── TypedArray.h/cpp    # JS TypedArray wrappers
+│   │   │   └── BridgelessJSCallInvoker.h
+│   │   ├── ExpoModulesHostObject.h/cpp  # JSI HostObject on global.expo.modules
+│   │   ├── ExpoModuleDecorator.h/cpp    # Decorates NativeModule with C# manifest
+│   │   ├── ExpoEventBridge.h            # C# → JS event trampoline
+│   │   ├── ExpoModuleHost.h/cpp         # HostFXR .NET runtime loader
+│   │   ├── ExpoMarshal.h/cpp            # JSI ↔ JSON conversion
+│   │   ├── ExpoAsyncCallback.h          # Async callback trampoline
+│   │   └── ... (RNW generated files)
 │   └── ExpoModulesWindowsCore.sln
 ├── dotnet/
 │   ├── Expo.Modules.Core/          # C# core library (NuGet package)
@@ -473,15 +496,9 @@ expo-modules-windows-core/          # This repo — the core library
 │       └── ExpoModulesWindowsCoreExample/
 │           ├── ExpoModulesAutolinked/       # Generated managed hub project
 │           └── ExpoModulesAutolinked.g.targets
+├── vendor/
+│   └── expo-modules-autolinking/   # Autolinking CLI fork (in-tree)
 └── docs/
-
-expo-modules-autolinking/           # Separate forked repo
-├── src/
-│   ├── platforms/
-│   │   ├── ios.ts                  # Existing
-│   │   ├── android.ts              # Existing
-│   │   └── windows.ts              # NEW — Windows platform resolver
-│   └── ...
 ```
 
 ---

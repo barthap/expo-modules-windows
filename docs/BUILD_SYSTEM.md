@@ -27,7 +27,7 @@ and all discovered module projects.
 
 | Project | Type | Output |
 |---------|------|--------|
-| `ExpoModulesWindowsCore.vcxproj` | C++ DLL | `ExpoModulesWindowsCore.dll` + `.winmd` |
+| `ExpoModulesWindowsCore.vcxproj` | C++ DLL | `ExpoModulesWindowsCore.dll` + `.winmd` (includes vendored `common/cpp/` from expo-desktop) |
 | `ExpoModulesWindowsCoreExample.vcxproj` | C++ EXE | `ExpoModulesWindowsCoreExample.exe` |
 | `ExpoModulesWindowsCoreExample.Package.wapproj` | MSIX Package | `AppX/` layout directory |
 | `Expo.Modules.Core.csproj` | C# Class Library | `Expo.Modules.Core.dll` + `.runtimeconfig.json` |
@@ -178,8 +178,17 @@ C++/WinRT projects. The current working shape avoids that by:
 The standalone library solution intentionally remains minimal and does not
 mirror the example app's managed project layout.
 
+## Vendored C++ Layer
+
+The `windows/ExpoModulesWindowsCore/common/cpp/` directory contains Expo's shared C++ runtime layer, vendored from [expo-desktop](https://github.com/shirakaba/expo-desktop) (Expo SDK 54, MSVC-patched). These files compile with `<PrecompiledHeader>NotUsing</PrecompiledHeader>` since they are cross-platform code that doesn't use Windows PCH.
+
+The vcxproj adds `$(ReactNativeWindowsDir)..\react-native\ReactCommon` to include paths for the `cxxreact/ErrorUtils.h` dependency used by `EventEmitter.cpp`.
+
+See [EXPO_DESKTOP.md](EXPO_DESKTOP.md) for details on versioning, updating, and our relationship with expo-desktop.
+
 ## Related Docs
 
 - `docs/AUTOLINKING.md`: Windows Expo autolinking command and generated files
 - `docs/CODE_FLOW.md`: runtime bootstrap and module invocation flow
 - `docs/DESIGN.md`: roadmap beyond the current HostFXR-based MVP
+- `docs/EXPO_DESKTOP.md`: vendored C++ layer provenance and update process

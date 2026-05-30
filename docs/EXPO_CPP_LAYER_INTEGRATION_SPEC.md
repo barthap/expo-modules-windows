@@ -1,7 +1,7 @@
 # Spec: Integrate Expo's Shared C++ Layer
 
 > Date: 2026-05-29
-> Status: Approved design, pending implementation
+> Status: Implemented (2026-05-30)
 
 ## Problem
 

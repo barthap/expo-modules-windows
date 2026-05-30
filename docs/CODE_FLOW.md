@@ -15,7 +15,7 @@ JS global.expo.modules  ←  JSI HostObject  ←  C++ ExpoModuleHost
 Three boundaries are crossed:
 1. **C# DSL → C# Registry**: Reflection-based. `Definition()` is called once; delegates and parameter types are captured.
 2. **C# ↔ C++**: Via `[UnmanagedCallersOnly]` function pointers resolved through HostFXR. Data crosses as UTF-8 JSON byte buffers.
-3. **C++ → JS**: Via JSI `HostObject`. Each module is a HostObject whose properties are JSI HostFunctions.
+3. **C++ → JS**: Via Expo's shared C++ layer. A `LazyObject` (JSI HostObject) wraps each module; on first access, it creates a `NativeModule` instance (inheriting `EventEmitter`) and decorates it with functions, constants, and events as plain JS properties.
 
 ---
 
@@ -146,23 +146,38 @@ All data crosses the C++ ↔ C# boundary as byte buffers:
 
 ---
 
-## Phase 3: JSI HostObject Installation
+## Phase 3: Class Hierarchy + HostObject Installation
 
-After `ExpoModuleHost::Initialize()` completes, the C++ side has a `vector<ModuleInfo>` with metadata for all modules. Now it installs a JSI HostObject.
+After `ExpoModuleHost::Initialize()` completes on the REACT_INIT thread, the C++ side has a `vector<ModuleInfo>` with metadata for all modules. Then on the JS thread it installs Expo's class hierarchy and the modules HostObject.
 
 ### callInvoker->invokeAsync (from REACT_INIT)
 
 ```cpp
-callInvoker->invokeAsync([hostObj](facebook::jsi::Runtime& rt) {
-    auto global = rt.global();
-    Object expo = ...;  // get or create global.expo
-    expo.setProperty(rt, "modules",
-        Object::createFromHostObject(rt, hostObj));  // ExpoModulesHostObject
-    global.setProperty(rt, "expo", expo);
+callInvoker->invokeAsync([&host, callInvoker](facebook::jsi::Runtime& rt) {
+    // 1. Create global.expo
+    Object expo(rt);
+    rt.global().setProperty(rt, "expo", expo);
+
+    // 2. Install Expo class hierarchy (from vendored common/cpp/)
+    expo::EventEmitter::installClass(rt);         // global.expo.EventEmitter
+    expo::SharedObject::installBaseClass(rt, ...); // global.expo.SharedObject
+    expo::SharedRef::installBaseClass(rt);          // global.expo.SharedRef
+    expo::NativeModule::installClass(rt);           // global.expo.NativeModule
+
+    // 3. Install modules host object
+    auto hostObj = std::make_shared<ExpoModulesHostObject>(host, callInvoker);
+    expoObj.setProperty(rt, "modules",
+        Object::createFromHostObject(rt, hostObj));
+
+    // 4. Wire event bridge
+    auto* eventCtx = new EventBridgeContext{ callInvoker, hostObj, &host };
+    host.SetEventCallback(&EventCallbackTrampoline, eventCtx);
 });
 ```
 
 This runs asynchronously on the JS thread after the JSI runtime is ready.
+
+The class hierarchy comes from Expo's shared `common/cpp/` layer, vendored from [expo-desktop](https://github.com/shirakaba/expo-desktop). `NativeModule` inherits from `EventEmitter`, so every module instance gets `addListener()`, `removeListeners()`, and `emit()` on its prototype.
 
 ### ExpoModulesHostObject — the `global.expo.modules` object
 
@@ -172,27 +187,27 @@ A JSI `HostObject`. When JS accesses a property:
 JS: global.expo.modules.ExampleModule
   → ExpoModulesHostObject::get(rt, "ExampleModule")
     → m_host.FindModule("ExampleModule") → ModuleInfo at index 0
-    → creates ExpoModuleObject(host, moduleInfo, callInvoker)
-    → caches it for future access
-    → returns Object::createFromHostObject(rt, moduleObj)
+    → creates LazyObject with initializer lambda:
+        → NativeModule::createInstance(rt)      // creates NativeModule JS instance
+        → decorateModuleObject(rt, obj, info)   // sets functions, constants, events
+        → stores decorated obj in m_moduleJsObjects[index]
+    → wraps in Object::createFromHostObject(rt, lazyObj)
+    → caches in m_moduleCache, returns
 ```
 
-### ExpoModuleObject — the per-module object
+### LazyObject + NativeModule Decoration
 
-Also a JSI `HostObject`. Each property access is intercepted:
+Unlike the old `ExpoModuleObject` (a custom HostObject that intercepted every property access), modules are now standard JS objects. `LazyObject` defers creation until first property access, then the initializer:
 
-```
-JS: ExampleModule.multiply
-  → ExpoModuleObject::get(rt, "multiply")
-    → "multiply" is in syncFunctions set
-    → calls createSyncFunction(rt, "multiply")
-    → returns a JSI Function (cached for future calls)
+1. Creates a `NativeModule` instance (which inherits `EventEmitter`)
+2. Calls `decorateModuleObject()` which sets plain JS properties:
+   - Sync functions as JSI HostFunctions
+   - Async functions as JSI HostFunctions returning Promises
+   - Constants as flat top-level properties (e.g., `module.platform`, not `module.constants.platform`)
+   - `startObserving` / `stopObserving` as no-op HostFunctions (MVP)
+   - `__expo_module_name__` string property
 
-JS: ExampleModule.constants
-  → ExpoModuleObject::get(rt, "constants")
-    → parses constantsJson via Value::createFromJsonUtf8
-    → returns the parsed object
-```
+After decoration, the JS object is a normal object with functions and properties — no HostObject `get()` overhead on every access.
 
 ---
 
@@ -286,15 +301,25 @@ JS calls the JSI HostFunction
 ```
 C# module calls SendEvent("onStatusChange", new { status = "ready" })
   │
-  ├─ Serializes: { moduleIndex: 0, name: "onStatusChange", data: { status: "ready" } }
+  ├─ Encodes event name + data as separate UTF-8 byte buffers
+  │   nameBytes = UTF8("onStatusChange"), dataBytes = JSON({ status: "ready" })
   │
-  └─ Calls C++ event callback via function pointer:
-      callback(jsonPtr, jsonLen, userDataPtr)
+  └─ Calls C++ EventCallbackTrampoline via function pointer:
+      callback(moduleIndex=0, namePtr, nameLen, dataPtr, dataLen, userDataPtr)
+        │  (called on C# ThreadPool thread)
         │
-        ├─ ExpoModuleObject::onEvent (set up during initialization)
+        ├─ Copies name + data strings (C# buffers pinned only during call)
         │
-        └─ callInvoker->invokeAsync → dispatches to JS thread
-            → calls JS listener functions registered via addListener()
+        └─ callInvoker->invokeAsync → dispatches to JS thread:
+            │
+            ├─ hostObj->getModuleJsObject(0) → decorated NativeModule object
+            │   (nullptr if module was never accessed from JS → silently drops)
+            │
+            ├─ Parse data JSON → jsi::Value
+            │
+            └─ expo::EventEmitter::emitEvent(rt, emitter, "onStatusChange", args)
+                → fires all JS listeners added via addListener()
+                → each listener has a proper Subscription with remove()
 ```
 
 ---
@@ -319,6 +344,15 @@ All cross-language data is serialized as JSON. This is the MVP approach; a binar
 
 **Why HostObject instead of individual TurboModules?**
 Matches the iOS/Android Expo Modules architecture. A single TurboModule bootstraps the system; each C# module is a property on the HostObject. This avoids registering N TurboModules with RNW.
+
+**Why Expo's shared `common/cpp/` layer?**
+The upstream `expo-modules-core` provides a C++ layer with `EventEmitter`, `NativeModule`, `SharedObject`, `SharedRef`, and `LazyObject`. Using it gives JS API parity with iOS/Android — `addListener()` returns proper subscriptions, `instanceof NativeModule` works, modules are lazily initialized. We vendor the MSVC-patched version from [expo-desktop](https://github.com/shirakaba/expo-desktop). See [EXPO_DESKTOP.md](EXPO_DESKTOP.md).
+
+**Why LazyObject + decoration instead of per-module HostObjects?**
+The original design used a custom `ExpoModuleObject` HostObject per module, intercepting every property access. The new design uses `LazyObject` (deferred init) + `decorateModuleObject()` (sets plain JS properties once). After decoration, accessing `module.multiply` is a direct property lookup — no C++ `get()` call on every access. This matches how iOS/Android platform layers work.
+
+**Why flat constants?**
+Constants are set as top-level properties on the module object (`module.platform`), not nested under `module.constants`. This matches upstream Expo behavior on iOS/Android.
 
 **Why JSON marshaling?**
 Simplest MVP approach. Both sides already have JSON serializers. Performance is acceptable for module-style APIs (not hot paths). Binary marshaling via source generators is planned for Phase 3.

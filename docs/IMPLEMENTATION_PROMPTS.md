@@ -14,6 +14,7 @@ The core MVP stack is implemented in-tree:
 | HostFXR proof of concept | Done | Standalone host loading validated before integrating with RNW. |
 | C# core library (`Expo.Modules.Core`) | Done | Module DSL, registry, JSON type conversion, lifecycle, events, interop entry points. |
 | C++ host bridge | Done | Single TurboModule, JSI HostObject, HostFXR runtime loader, async callback path. |
+| Expo shared C++ layer | Done | Vendored from expo-desktop (SDK 54, MSVC-patched). EventEmitter, NativeModule, SharedObject, SharedRef, LazyObject. See [EXPO_DESKTOP.md](EXPO_DESKTOP.md). |
 | Build integration | Done | Managed deployment targets, `nethost` packaging, VS/MSIX build path working. |
 | Windows Expo autolinking | Done | `autolink-windows` command, generated hub project, `.sln`/`.vcxproj` patching, generated provider and deploy targets. |
 
@@ -29,18 +30,25 @@ These are not new platform pillars, but they still matter:
 
 ## Next Major Milestones
 
-The next substantial feature tracks are the ones described in the design docs:
+1. **expo-modules-core TS compatibility**
+   Verify that `requireNativeModule()` from the upstream `expo-modules-core`
+   TypeScript package works with our native layer, now that it matches the
+   upstream JS API surface.
 
-1. **NativeAOT mode and typed dispatch**
+2. **SharedObject for C# objects**
+   Wire the SharedObject releaser to call back into C# to release managed
+   handles when the JS object is GC'd.
+
+3. **NativeAOT mode and typed dispatch**
    Replace the HostFXR-only MVP path with a production-grade alternative based
    on source generation, typed exports, and NativeAOT-friendly marshaling.
    See `docs/DESIGN.md`, Phase 3.
 
-2. **View / native React component support**
+4. **View / native React component support**
    Add Fabric-compatible native view support from C# with a view DSL and C++
    view manager bridge. See `docs/DESIGN.md`, Phase 4 and `docs/DESIGN_VIEWS.md`.
 
-3. **Developer experience and packaging**
+5. **Developer experience and packaging**
    Templates, NuGet packaging, hot reload, and example modules remain a later
    phase after the two platform milestones above. See `docs/DESIGN.md`, Phase 5.
 

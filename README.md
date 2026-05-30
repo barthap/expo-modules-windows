@@ -2,9 +2,12 @@
 
 Expo Modules Core implementation for Windows, enabling C# developers to write React Native Windows native modules using the Expo Modules declarative DSL — without touching C++ boilerplate.
 
-> **Status:** HostFXR-based MVP is implemented. Sync/async functions, constants,
-> events, build integration, and Windows Expo autolinking are working. View
-> components and NativeAOT mode are the next major milestones.
+> **Status:** HostFXR-based MVP with Expo's shared C++ runtime layer.
+> Sync/async functions, constants, events (with real `EventEmitter` subscriptions),
+> build integration, and Windows Expo autolinking are working.
+> The C++ layer is vendored from [expo-desktop](https://github.com/shirakaba/expo-desktop)
+> (Expo SDK 54, MSVC-patched), giving JS API parity with iOS/Android.
+> View components and NativeAOT mode are the next major milestones.
 
 ## How It Works
 
@@ -37,7 +40,7 @@ public class BatteryModule : Module
 
 Modules are accessible from JavaScript as `global.expo.modules.Battery.getBatteryLevel()`.
 
-Under the hood, a single C++ TurboModule registers with React Native Windows, installs a JSI HostObject, and loads the .NET runtime via HostFXR. Each C# module becomes a property on that HostObject. See [docs/DESIGN.md](docs/DESIGN.md) for the full architecture and [docs/CODE_FLOW.md](docs/CODE_FLOW.md) for the call path from JS to C#.
+Under the hood, a single C++ TurboModule registers with React Native Windows, loads the .NET runtime via HostFXR, and installs Expo's shared C++ class hierarchy (`EventEmitter`, `NativeModule`, `SharedObject`, `SharedRef`) on `global.expo`. Each C# module is wrapped as a `NativeModule` instance (inheriting `EventEmitter`) on `global.expo.modules`, with lazy initialization via `LazyObject`. See [docs/DESIGN.md](docs/DESIGN.md) for the full architecture, [docs/CODE_FLOW.md](docs/CODE_FLOW.md) for the call path from JS to C#, and [docs/EXPO_DESKTOP.md](docs/EXPO_DESKTOP.md) for our relationship with the expo-desktop project.
 
 ## Prerequisites
 
@@ -96,10 +99,11 @@ AsyncFunction<string>("fetchData", async () =>
 
 ### Constants
 
-Static values exposed to JS:
+Static values exposed as flat properties on the module object (matching upstream Expo on iOS/Android):
 
 ```csharp
-// JS: MyModule.Constants.platform -> "windows"
+// JS: MyModule.platform -> "windows"
+//     MyModule.version  -> "1.0.0"
 Constants(new
 {
     platform = "windows",
@@ -193,7 +197,13 @@ Or open `example/windows/ExpoModulesWindowsCoreExample.sln` directly in VS 2022.
 ```
 expo-modules-windows-core/
 ├── src/                             # TypeScript (JS-side API, EventEmitter)
-├── windows/ExpoModulesWindowsCore/  # C++ host (TurboModule + JSI HostObject)
+├── windows/ExpoModulesWindowsCore/  # C++ host (TurboModule + JSI)
+│   ├── common/cpp/                  # Vendored Expo shared C++ layer (from expo-desktop)
+│   ├── ExpoModuleHost.h/cpp         # HostFXR .NET runtime loader
+│   ├── ExpoModulesHostObject.h/cpp  # JSI HostObject on global.expo.modules
+│   ├── ExpoModuleDecorator.h/cpp    # Decorates NativeModule with C# manifest
+│   ├── ExpoEventBridge.h            # C# → JS event dispatch trampoline
+│   └── ExpoMarshal.h/cpp            # JSON ↔ JSI conversion
 ├── dotnet/Expo.Modules.Core/       # C# core library (Module base class, DSL)
 ├── vendor/expo-modules-autolinking/ # Autolinking CLI fork
 ├── example/                         # React Native example app
@@ -211,6 +221,7 @@ expo-modules-windows-core/
 | [AUTOLINKING.md](docs/AUTOLINKING.md) | Autolinking guide for module authors |
 | [BUILD_SYSTEM.md](docs/BUILD_SYSTEM.md) | Build system, project structure, MSBuild targets |
 | [CODE_FLOW.md](docs/CODE_FLOW.md) | End-to-end call flow from JS to C# and back |
+| [EXPO_DESKTOP.md](docs/EXPO_DESKTOP.md) | Relationship with expo-desktop and the shared C++ layer |
 | [RESEARCH_DSL.md](docs/RESEARCH_DSL.md) | Full DSL reference (functions, types, lifecycle) |
 
 ## License
