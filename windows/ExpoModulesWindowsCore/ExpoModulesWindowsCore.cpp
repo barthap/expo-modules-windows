@@ -30,27 +30,42 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
         callInvoker->invokeAsync([&host, callInvoker](facebook::jsi::Runtime& rt) {
             using namespace facebook::jsi;
 
-            // 1. Create global.expo
-            Object expo(rt);
-            rt.global().setProperty(rt, "expo", expo);
+            // 1. Detect whether expo-desktop already set up global.expo
+            Value expoVal = rt.global().getProperty(rt, "expo");
+            bool expoDesktopPresent = expoVal.isObject();
 
-            // 2. Install class hierarchy (from common/cpp/)
-            expo::EventEmitter::installClass(rt);
-            expo::SharedObject::installBaseClass(rt, [](expo::SharedObject::ObjectId) {
-                // Releaser — called when SharedObject is GC'd.
-                // Future: release C# shared objects. No-op for MVP.
-            });
-            expo::SharedRef::installBaseClass(rt);
-            expo::NativeModule::installClass(rt);
+            if (!expoDesktopPresent) {
+                // Standalone mode — create global.expo
+                Object expo(rt);
+                rt.global().setProperty(rt, "expo", expo);
+            }
 
-            // 3. Install modules host object on global.expo.modules
-            auto hostObj = std::make_shared<expo::ExpoModulesHostObject>(host, callInvoker);
+            // 2. Install class hierarchy only if expo-desktop hasn't already
+            if (!expoDesktopPresent) {
+                expo::EventEmitter::installClass(rt);
+                expo::SharedObject::installBaseClass(rt, [](expo::SharedObject::ObjectId) {});
+                expo::SharedRef::installBaseClass(rt);
+                expo::NativeModule::installClass(rt);
+            }
+
+            // 3. Capture existing modules object as fallback (expo-desktop stubs)
             Object expoObj = rt.global().getPropertyAsObject(rt, "expo");
+            std::shared_ptr<Object> fallbackModules;
+
+            if (expoDesktopPresent) {
+                Value modulesVal = expoObj.getProperty(rt, "modules");
+                if (modulesVal.isObject()) {
+                    fallbackModules = std::make_shared<Object>(modulesVal.getObject(rt));
+                }
+            }
+
+            // 4. Install modules host object (with optional fallback)
+            auto hostObj = std::make_shared<expo::ExpoModulesHostObject>(
+                host, callInvoker, std::move(fallbackModules));
             expoObj.setProperty(rt, "modules",
                 Object::createFromHostObject(rt, hostObj));
 
-            // 4. Wire up event bridge — EventBridgeContext holds a shared_ptr
-            // to keep the HostObject alive independently of JSI's GC.
+            // 5. Wire up event bridge
             auto* eventCtx = new expo::EventBridgeContext{
                 callInvoker, hostObj, &host
             };
@@ -64,11 +79,15 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
         auto callInvoker = reactContext.CallInvoker();
         callInvoker->invokeAsync([error = m_initError](facebook::jsi::Runtime& rt) {
             using namespace facebook::jsi;
-            auto global = rt.global();
-            Object expo(rt);
+            Value expoVal = rt.global().getProperty(rt, "expo");
+            Object expo = expoVal.isObject()
+                ? expoVal.getObject(rt)
+                : Object(rt);
             expo.setProperty(rt, "__initError",
                 String::createFromUtf8(rt, error));
-            global.setProperty(rt, "expo", std::move(expo));
+            if (!expoVal.isObject()) {
+                rt.global().setProperty(rt, "expo", std::move(expo));
+            }
         });
     }
     catch (...) {
