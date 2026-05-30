@@ -92,3 +92,5 @@ nitrogen/
 # C# build output
 **/bin/
 **/obj/
+
+.claude/settings.local.json
