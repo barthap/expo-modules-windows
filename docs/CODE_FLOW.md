@@ -177,6 +177,8 @@ callInvoker->invokeAsync([&host, callInvoker](facebook::jsi::Runtime& rt) {
 
 This runs asynchronously on the JS thread after the JSI runtime is ready.
 
+When expo-desktop is also installed, this lambda detects `global.expo` already exists and adapts: it skips class hierarchy installation (expo-desktop already did it) and captures the existing `global.expo.modules` as a fallback for module name resolution. See [EXPO_DESKTOP.md](EXPO_DESKTOP.md) for details.
+
 The class hierarchy comes from Expo's shared `common/cpp/` layer, vendored from [expo-desktop](https://github.com/shirakaba/expo-desktop). `NativeModule` inherits from `EventEmitter`, so every module instance gets `addListener()`, `removeListeners()`, and `emit()` on its prototype.
 
 ### ExpoModulesHostObject — the `global.expo.modules` object

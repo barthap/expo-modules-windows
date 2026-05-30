@@ -75,6 +75,18 @@ The vendored files are compiled as part of the `ExpoModulesWindowsCore.vcxproj` 
 
 One additional include path is needed: `$(ReactNativeWindowsDir)..\react-native\ReactCommon` — this resolves the `<cxxreact/ErrorUtils.h>` include in `EventEmitter.cpp`. RNW's internal `React.Cpp.props` adds this path, but external CppLib consumers don't inherit it.
 
+## Coexistence Mode
+
+When expo-desktop is installed in the same RNW project, our library detects it automatically at runtime and adapts:
+
+1. **Detection**: Checks whether `global.expo` already exists when our init lambda runs. expo-desktop uses `REACT_EAGER_TURBO_MODULE` (synchronous init), so it always runs before our `callInvoker->invokeAsync`.
+
+2. **Class hierarchy**: Skipped — expo-desktop already installed `EventEmitter`, `NativeModule`, `SharedObject`, `SharedRef` on `global.expo`. Both DLLs compile identical `common/cpp/` code, so the classes are interchangeable.
+
+3. **Module merging**: expo-desktop sets up `global.expo.modules` with stubs (`NativeModulesProxy`, `ExpoAsset`, `ExponentConstants`). We capture that object as a fallback and replace `global.expo.modules` with our `ExpoModulesHostObject`. When JS accesses a module name that isn't a C# module, our HostObject falls through to the original expo-desktop object.
+
+No build-time configuration is needed — the detection is fully automatic.
+
 ## Updating the Vendored Files
 
 To update to a newer Expo SDK version:
