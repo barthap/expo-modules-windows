@@ -5,12 +5,6 @@
 #include "ExpoModulesHostObject.h"
 #include "ExpoEventBridge.h"
 
-// Expo shared C++ layer
-#include "EventEmitter.h"
-#include "SharedObject.h"
-#include "SharedRef.h"
-#include "NativeModule.h"
-
 #include <filesystem>
 #include <JSI/JsiApiContext.h>
 
@@ -30,46 +24,32 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
         callInvoker->invokeAsync([&host, callInvoker](facebook::jsi::Runtime& rt) {
             using namespace facebook::jsi;
 
-            // 1. Detect whether expo-desktop already set up global.expo
             Value expoVal = rt.global().getProperty(rt, "expo");
-            bool expoDesktopPresent = expoVal.isObject();
-
-            if (!expoDesktopPresent) {
-                // Standalone mode — create global.expo
-                Object expo(rt);
-                rt.global().setProperty(rt, "expo", expo);
+            if (!expoVal.isObject()) {
+                throw std::runtime_error(
+                    "expo-desktop-modules-core must initialize global.expo before expo-modules-windows-core");
             }
 
-            // 2. Install class hierarchy only if expo-desktop hasn't already
-            if (!expoDesktopPresent) {
-                expo::EventEmitter::installClass(rt);
-                expo::SharedObject::installBaseClass(rt, [](expo::SharedObject::ObjectId) {});
-                expo::SharedRef::installBaseClass(rt);
-                expo::NativeModule::installClass(rt);
-            }
-
-            // 3. Capture existing modules object as fallback (expo-desktop stubs)
-            Object expoObj = rt.global().getPropertyAsObject(rt, "expo");
-            std::shared_ptr<Object> fallbackModules;
-
-            if (expoDesktopPresent) {
-                Value modulesVal = expoObj.getProperty(rt, "modules");
-                if (modulesVal.isObject()) {
-                    fallbackModules = std::make_shared<Object>(modulesVal.getObject(rt));
+            Object expoObj = expoVal.getObject(rt);
+            for (const char* className : {"EventEmitter", "NativeModule"}) {
+                if (!expoObj.getProperty(rt, className).isObject()) {
+                    throw std::runtime_error(
+                        "expo-desktop-modules-core must initialize global.expo Expo classes before expo-modules-windows-core");
                 }
             }
 
-            // 4. Install modules host object (with optional fallback)
+            Value modulesVal = expoObj.getProperty(rt, "modules");
+            if (!modulesVal.isObject()) {
+                throw std::runtime_error(
+                    "expo-desktop-modules-core must initialize global.expo.modules before expo-modules-windows-core");
+            }
+            auto expoDesktopModules = std::make_shared<Object>(modulesVal.getObject(rt));
+
             auto hostObj = std::make_shared<expo::ExpoModulesHostObject>(
-                host, callInvoker, std::move(fallbackModules));
+                host, callInvoker, std::move(expoDesktopModules));
             expoObj.setProperty(rt, "modules",
                 Object::createFromHostObject(rt, hostObj));
 
-            // 5. Set mode indicator for debugging
-            expoObj.setProperty(rt, "__windowsCoreMode",
-                String::createFromUtf8(rt, expoDesktopPresent ? "coexistence" : "standalone"));
-
-            // 6. Wire up event bridge
             auto* eventCtx = new expo::EventBridgeContext{
                 callInvoker, hostObj, &host
             };
@@ -84,13 +64,10 @@ void ExpoModulesWindowsCore::Initialize(React::ReactContext const &reactContext)
         callInvoker->invokeAsync([error = m_initError](facebook::jsi::Runtime& rt) {
             using namespace facebook::jsi;
             Value expoVal = rt.global().getProperty(rt, "expo");
-            Object expo = expoVal.isObject()
-                ? expoVal.getObject(rt)
-                : Object(rt);
-            expo.setProperty(rt, "__initError",
-                String::createFromUtf8(rt, error));
-            if (!expoVal.isObject()) {
-                rt.global().setProperty(rt, "expo", std::move(expo));
+            if (expoVal.isObject()) {
+                Object expo = expoVal.getObject(rt);
+                expo.setProperty(rt, "__initError",
+                    String::createFromUtf8(rt, error));
             }
         });
     }

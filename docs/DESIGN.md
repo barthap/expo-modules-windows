@@ -141,15 +141,17 @@ A .NET class library (`net9.0-windows10.0.19041.0`) containing:
 
 #### 1.2 C++ Host (`ExpoModulesHostObject`)
 
-A single C++ TurboModule that installs Expo's shared C++ class hierarchy and a JSI HostObject:
+A single C++ TurboModule that requires expo-desktop's Expo JS runtime and
+installs a JSI HostObject for C# modules:
 
-- **Expo shared C++ layer** (`common/cpp/`, vendored from expo-desktop):
+- **Expo JS runtime** (`expo-desktop-modules-core`):
   - `EventEmitter` — installed on `global.expo.EventEmitter`, provides `addListener`/`removeListeners`/`emit` with NativeState-backed subscriptions
   - `NativeModule` — inherits EventEmitter, installed on `global.expo.NativeModule`
   - `SharedObject` / `SharedRef` — reference-counted native handle wrappers
   - `LazyObject` — defers module creation until first property access
 - **`ExpoModulesHostObject`** — implements `jsi::HostObject` on `global.expo.modules`:
   - `get(runtime, name)` → creates a `LazyObject` that, on first access, creates a `NativeModule` instance and decorates it with C# module functions/constants/events
+  - unknown names are delegated to expo-desktop's original `global.expo.modules` object
 - **`ExpoModuleDecorator`** — sets functions, constants, events as plain JS properties on a `NativeModule` instance
 - **`ExpoEventBridge`** — trampoline that dispatches C# events to JS via `EventEmitter::emitEvent()`
 - **`ExpoModuleHost`** — .NET runtime loader:
@@ -368,7 +370,7 @@ public class MapViewModule : Module
 
 #### 5.1 Project Template / CLI
 
-- `npx create-expo-windows-module <name>` scaffolds a new module
+- `bunx create-expo-windows-module <name>` scaffolds a new module
 - Generates: C# project, C++ host shim, TypeScript spec, example app wiring
 - Handles MSBuild/NuGet configuration
 

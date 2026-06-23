@@ -4,6 +4,7 @@ import path from 'path';
 // Project type GUIDs
 const CSPROJ_TYPE_GUID = '{9A19103F-16F7-4668-BE54-9A1E7A4F7556}';
 const SOLUTION_FOLDER_TYPE_GUID = '{2150E333-8FDC-42A3-9474-1A3956D46DE8}';
+const winPath = path.win32;
 
 // Namespace for deterministic GUID generation
 const GUID_NAMESPACE = '6ba7b810-9dad-11d1-80b4-00c04fd430c8'; // DNS namespace UUID
@@ -300,7 +301,7 @@ function escapeRegex(str: string): string {
 export function createSlnProject(name: string, csprojAbsPath: string, slnDir: string): SlnProject {
   return {
     name,
-    relativePath: path.relative(slnDir, csprojAbsPath).replace(/\//g, '\\'),
+    relativePath: winPath.relative(slnDir, csprojAbsPath),
     guid: generateDeterministicGuid(`CSharpProject:${name}`),
   };
 }

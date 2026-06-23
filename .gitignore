@@ -12,6 +12,8 @@ jsconfig.json
 # Xcode
 #
 build/
+!vendor/expo-modules-autolinking/build/
+!vendor/expo-modules-autolinking/build/**
 *.pbxuser
 !default.pbxuser
 *.mode1v3

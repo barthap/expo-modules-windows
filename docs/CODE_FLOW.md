@@ -148,28 +148,23 @@ All data crosses the C++ ↔ C# boundary as byte buffers:
 
 ## Phase 3: Class Hierarchy + HostObject Installation
 
-After `ExpoModuleHost::Initialize()` completes on the REACT_INIT thread, the C++ side has a `vector<ModuleInfo>` with metadata for all modules. Then on the JS thread it installs Expo's class hierarchy and the modules HostObject.
+After `ExpoModuleHost::Initialize()` completes on the REACT_INIT thread, the C++ side has a `vector<ModuleInfo>` with metadata for all modules. Then on the JS thread it verifies that `expo-desktop-modules-core` has installed Expo's JS runtime objects and composes the C# modules HostObject with expo-desktop's existing modules object.
 
 ### callInvoker->invokeAsync (from REACT_INIT)
 
 ```cpp
 callInvoker->invokeAsync([&host, callInvoker](facebook::jsi::Runtime& rt) {
-    // 1. Create global.expo
-    Object expo(rt);
-    rt.global().setProperty(rt, "expo", expo);
+    // 1. Require expo-desktop's runtime setup
+    Object expoObj = rt.global().getPropertyAsObject(rt, "expo");
+    Object desktopModules = expoObj.getPropertyAsObject(rt, "modules");
 
-    // 2. Install Expo class hierarchy (from vendored common/cpp/)
-    expo::EventEmitter::installClass(rt);         // global.expo.EventEmitter
-    expo::SharedObject::installBaseClass(rt, ...); // global.expo.SharedObject
-    expo::SharedRef::installBaseClass(rt);          // global.expo.SharedRef
-    expo::NativeModule::installClass(rt);           // global.expo.NativeModule
-
-    // 3. Install modules host object
-    auto hostObj = std::make_shared<ExpoModulesHostObject>(host, callInvoker);
+    // 2. Install our modules host object, preserving expo-desktop modules
+    auto hostObj = std::make_shared<ExpoModulesHostObject>(
+        host, callInvoker, std::make_shared<Object>(desktopModules));
     expoObj.setProperty(rt, "modules",
         Object::createFromHostObject(rt, hostObj));
 
-    // 4. Wire event bridge
+    // 3. Wire event bridge
     auto* eventCtx = new EventBridgeContext{ callInvoker, hostObj, &host };
     host.SetEventCallback(&EventCallbackTrampoline, eventCtx);
 });
@@ -177,9 +172,15 @@ callInvoker->invokeAsync([&host, callInvoker](facebook::jsi::Runtime& rt) {
 
 This runs asynchronously on the JS thread after the JSI runtime is ready.
 
-When expo-desktop is also installed, this lambda detects `global.expo` already exists and adapts: it skips class hierarchy installation (expo-desktop already did it) and captures the existing `global.expo.modules` as a fallback for module name resolution. See [EXPO_DESKTOP.md](EXPO_DESKTOP.md) for details.
+If `global.expo`, `global.expo.NativeModule`, `global.expo.EventEmitter`, or
+`global.expo.modules` is missing, initialization throws a clear error naming
+`expo-desktop-modules-core` as the required runtime owner. We do not create
+standalone Expo globals.
 
-The class hierarchy comes from Expo's shared `common/cpp/` layer, vendored from [expo-desktop](https://github.com/shirakaba/expo-desktop). `NativeModule` inherits from `EventEmitter`, so every module instance gets `addListener()`, `removeListeners()`, and `emit()` on its prototype.
+The class hierarchy comes from `expo-desktop-modules-core`, using Expo's shared
+`common/cpp/` layer. `NativeModule` inherits from `EventEmitter`, so every
+module instance gets `addListener()`, `removeListeners()`, and `emit()` on its
+prototype.
 
 ### ExpoModulesHostObject — the `global.expo.modules` object
 
@@ -196,6 +197,10 @@ JS: global.expo.modules.ExampleModule
     → wraps in Object::createFromHostObject(rt, lazyObj)
     → caches in m_moduleCache, returns
 ```
+
+If the requested name is not a C# module, `ExpoModulesHostObject` reads it from
+expo-desktop's original `global.expo.modules` object so stubs like
+`NativeModulesProxy`, `ExpoAsset`, and `ExponentConstants` stay available.
 
 ### LazyObject + NativeModule Decoration
 

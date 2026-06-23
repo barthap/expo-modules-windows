@@ -1,7 +1,15 @@
-# Spec: expo-desktop Coexistence
+# Superseded Spec: expo-desktop Coexistence
+
+> Superseded by the expo-desktop-required runtime model. The active direction is
+> that `expo-desktop-modules-core` owns `global.expo` and this package composes
+> C# modules into that runtime. Standalone `global.expo` setup is no longer an
+> active requirement.
+>
+> The design body below is archived historical context. Do not treat its
+> standalone/coexistence goals as active requirements.
 
 > Date: 2026-05-30
-> Status: Approved design
+> Status: Superseded
 
 ## Problem
 

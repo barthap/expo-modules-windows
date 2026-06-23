@@ -1,6 +1,15 @@
 # Relationship with expo-desktop
 
-This document describes how expo-modules-windows-core relates to the [expo-desktop](https://github.com/shirakaba/expo-desktop) project and Expo's upstream shared C++ layer.
+This document describes how expo-modules-windows-core composes with the
+[expo-desktop](https://github.com/shirakaba/expo-desktop) runtime on Windows.
+
+## Current Fresh-App Toolchain Note
+
+The current expo-desktop fresh-app proof resolved
+`react-native-windows@0.81.29`. That app shape requires Visual Studio / MSBuild
+18.6+ with VCTools before `react-native run-windows` can build. On BKLOCEK-PC,
+Visual Studio 2022 17.14 was enough to run package and autolinking checks but
+not enough to build the generated RNW app.
 
 ## Background
 
@@ -49,7 +58,9 @@ We take these files as-is with no further modifications.
 
 The shared C++ layer provides the JS-visible class hierarchy. Our platform-specific code (the "Windows platform layer") uses it as follows:
 
-1. **Initialization** (`ExpoModulesWindowsCore.cpp`): Installs the class hierarchy on `global.expo` — `EventEmitter`, `SharedObject`, `SharedRef`, `NativeModule`.
+1. **Initialization** (`ExpoModulesWindowsCore.cpp`): Requires
+   `expo-desktop-modules-core` to have installed `global.expo`, Expo's JS class
+   hierarchy, and `global.expo.modules`.
 
 2. **Module creation** (`ExpoModulesHostObject.cpp`): Creates `LazyObject` wrappers that, on first property access, call `NativeModule::createInstance()` to get a proper JS instance.
 
@@ -61,7 +72,7 @@ The shared C++ layer provides the JS-visible class hierarchy. Our platform-speci
 
 | Component | Source |
 |-----------|--------|
-| JS class hierarchy (EventEmitter, NativeModule, etc.) | expo-desktop (vendored `common/cpp/`) |
+| JS class hierarchy (EventEmitter, NativeModule, etc.) | expo-desktop |
 | Module loading and decoration | Our code (`ExpoModulesHostObject`, `ExpoModuleDecorator`) |
 | .NET runtime bridge (HostFXR) | Our code (`ExpoModuleHost`) |
 | C# module DSL | Our code (`dotnet/Expo.Modules.Core/`) |
@@ -75,17 +86,26 @@ The vendored files are compiled as part of the `ExpoModulesWindowsCore.vcxproj` 
 
 One additional include path is needed: `$(ReactNativeWindowsDir)..\react-native\ReactCommon` — this resolves the `<cxxreact/ErrorUtils.h>` include in `EventEmitter.cpp`. RNW's internal `React.Cpp.props` adds this path, but external CppLib consumers don't inherit it.
 
-## Coexistence Mode
+## Runtime Composition
 
-When expo-desktop is installed in the same RNW project, our library detects it automatically at runtime and adapts:
+`expo-desktop-modules-core` is a required peer dependency. It initializes
+`global.expo`, installs Expo's JS classes, and creates the initial
+`global.expo.modules` object. This package then composes with that runtime:
 
-1. **Detection**: Checks whether `global.expo` already exists when our init lambda runs. expo-desktop uses `REACT_EAGER_TURBO_MODULE` (synchronous init), so it always runs before our `callInvoker->invokeAsync`.
+1. **Validation**: `ExpoModulesWindowsCore.cpp` fails loudly if `global.expo`,
+   `global.expo.EventEmitter`, `global.expo.NativeModule`, or
+   `global.expo.modules` is missing.
 
-2. **Class hierarchy**: Skipped — expo-desktop already installed `EventEmitter`, `NativeModule`, `SharedObject`, `SharedRef` on `global.expo`. Both DLLs compile identical `common/cpp/` code, so the classes are interchangeable.
+2. **Module composition**: The original `global.expo.modules` object is retained
+   and `global.expo.modules` is replaced with `ExpoModulesHostObject`.
 
-3. **Module merging**: expo-desktop sets up `global.expo.modules` with stubs (`NativeModulesProxy`, `ExpoAsset`, `ExponentConstants`). We capture that object as a fallback and replace `global.expo.modules` with our `ExpoModulesHostObject`. When JS accesses a module name that isn't a C# module, our HostObject falls through to the original expo-desktop object.
+3. **Lookup order**: C# modules take precedence. Unknown module names are read
+   from expo-desktop's original modules object so stubs such as
+   `NativeModulesProxy`, `ExpoAsset`, and `ExponentConstants` remain available.
 
-No build-time configuration is needed — the detection is fully automatic.
+Standalone mode is intentionally unsupported. Apps should be created with
+`expo-desktop create-app` or otherwise install and initialize
+`expo-desktop-modules-core`.
 
 ## Updating the Vendored Files
 
@@ -126,4 +146,7 @@ expo/expo (upstream)
                                 (vendored copy, no further modifications)
 ```
 
-We do not depend on expo-desktop at runtime or build time — we vendor a snapshot of its `common/cpp/` files. expo-desktop is the upstream source for MSVC-compatible patches; upstream `expo/expo` is the ultimate source of truth for the C++ layer's behavior.
+We depend on expo-desktop at runtime for the Expo JS environment, and we vendor
+a snapshot of its MSVC-compatible `common/cpp/` files for the native C++ pieces
+we call directly. expo/expo remains the ultimate source of truth for the shared
+C++ layer's behavior.

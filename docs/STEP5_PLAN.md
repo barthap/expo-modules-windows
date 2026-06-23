@@ -1,11 +1,15 @@
 # Step 5: Autolinking ↔ Build Integration
 
+> Superseded planning artifact. The current external-app workflow is documented
+> in `docs/AUTOLINKING.md` and uses
+> `bunx expo-modules-windows-core autolink-windows ...`.
+
 This file originally tracked the plan for wiring the Windows autolinking fork
 into the build. That work is now implemented.
 
 ## What Step 5 Delivered
 
-- `expo-modules-autolinking autolink-windows`
+- `bunx expo-modules-windows-core autolink-windows`
 - generated `ExpoModulesAutolinked.csproj`
 - generated `ExpoModulesProvider.g.cs`
 - generated `ExpoModulesAutolinked.g.targets`

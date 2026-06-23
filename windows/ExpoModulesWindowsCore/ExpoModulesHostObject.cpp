@@ -13,10 +13,10 @@ using namespace facebook::jsi;
 ExpoModulesHostObject::ExpoModulesHostObject(
     ExpoModuleHost& host,
     std::shared_ptr<facebook::react::CallInvoker> callInvoker,
-    std::shared_ptr<facebook::jsi::Object> fallbackModules)
+    std::shared_ptr<facebook::jsi::Object> expoDesktopModules)
     : m_host(host)
     , m_callInvoker(std::move(callInvoker))
-    , m_fallbackModules(std::move(fallbackModules)) {}
+    , m_expoDesktopModules(std::move(expoDesktopModules)) {}
 
 Value ExpoModulesHostObject::get(Runtime& rt, const PropNameID& name) {
     auto nameStr = name.utf8(rt);
@@ -58,12 +58,10 @@ Value ExpoModulesHostObject::get(Runtime& rt, const PropNameID& name) {
         return Value(rt, *jsObj);
     }
 
-    // Fall through to expo-desktop's modules (if present)
-    if (m_fallbackModules) {
-        Value val = m_fallbackModules->getProperty(rt, nameStr.c_str());
-        if (!val.isUndefined()) {
-            return val;
-        }
+    // Delegate unknown names to expo-desktop's original modules object.
+    Value val = m_expoDesktopModules->getProperty(rt, nameStr.c_str());
+    if (!val.isUndefined()) {
+        return val;
     }
 
     return Value::undefined();
@@ -75,17 +73,15 @@ std::vector<PropNameID> ExpoModulesHostObject::getPropertyNames(Runtime& rt) {
         names.push_back(PropNameID::forUtf8(rt, mod.name));
     }
 
-    // Merge fallback module names (expo-desktop stubs like NativeModulesProxy)
-    if (m_fallbackModules) {
-        Array fallbackNames = m_fallbackModules->getPropertyNames(rt);
-        size_t len = fallbackNames.size(rt);
-        for (size_t i = 0; i < len; i++) {
-            String key = fallbackNames.getValueAtIndex(rt, i).getString(rt);
-            std::string keyStr = key.utf8(rt);
-            // C# modules take precedence — only add if not already a C# module
-            if (!m_host.FindModule(keyStr)) {
-                names.push_back(PropNameID::forString(rt, key));
-            }
+    // Merge expo-desktop module names (stubs like NativeModulesProxy).
+    Array desktopNames = m_expoDesktopModules->getPropertyNames(rt);
+    size_t len = desktopNames.size(rt);
+    for (size_t i = 0; i < len; i++) {
+        String key = desktopNames.getValueAtIndex(rt, i).getString(rt);
+        std::string keyStr = key.utf8(rt);
+        // C# modules take precedence — only add if not already a C# module
+        if (!m_host.FindModule(keyStr)) {
+            names.push_back(PropNameID::forString(rt, key));
         }
     }
 

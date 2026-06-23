@@ -4,6 +4,16 @@
 module.exports = {
   dependency: {
     platforms: {
+      windows: {
+        sourceDir: 'windows',
+        solutionFile: 'ExpoModulesWindowsCore.sln',
+        projects: [
+          {
+            projectFile: 'ExpoModulesWindowsCore\\ExpoModulesWindowsCore.vcxproj',
+            directDependency: true,
+          },
+        ],
+      },
       android: {
         cmakeListsPath: 'generated/jni/CMakeLists.txt',
       },

@@ -2,6 +2,6 @@
   <Target Name="GenerateExpoModulesProvider" BeforeTargets="CoreCompile"
           Inputs="$(ProjectDir)..\..\package.json"
           Outputs="$(ProjectDir)ExpoModulesProvider.g.cs">
-    <Exec Command="npx expo-modules-autolinking generate-modules-provider --platform windows --target &quot;$(ProjectDir)ExpoModulesProvider.g.cs&quot;" />
+    <Exec Command="bunx expo-modules-windows-core generate-modules-provider --platform windows --target &quot;$(ProjectDir)ExpoModulesProvider.g.cs&quot;" />
   </Target>
 </Project>

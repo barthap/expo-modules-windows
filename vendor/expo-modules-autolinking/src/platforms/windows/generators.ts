@@ -5,6 +5,7 @@ import { generateModulesProviderContent } from './windows';
 import type { ModuleDescriptorWindows } from '../../types';
 
 const TFM = 'net9.0-windows10.0.19041.0';
+const winPath = path.win32;
 
 export interface AutolinkedProject {
   /** Absolute path to the .csproj file */
@@ -20,7 +21,7 @@ export async function readAssemblyName(csprojPath: string): Promise<string> {
   try {
     const content = await fs.promises.readFile(csprojPath, 'utf8');
     const match = content.match(/<AssemblyName>\s*([^<]+?)\s*<\/AssemblyName>/);
-    if (match) {
+    if (match?.[1]) {
       return match[1];
     }
   } catch {
@@ -37,14 +38,14 @@ export function generateAutolinkedCsproj(
   moduleProjects: AutolinkedProject[],
   outputDir: string
 ): string {
-  const coreRef = path.relative(outputDir, coreProject.csprojPath).replace(/\//g, '\\');
+  const coreRef = winPath.relative(outputDir, coreProject.csprojPath);
   const moduleRefs = moduleProjects.map(
-    (m) => path.relative(outputDir, m.csprojPath).replace(/\//g, '\\')
+    (m) => winPath.relative(outputDir, m.csprojPath)
   );
 
   let refs = `    <ProjectReference Include="${coreRef}" />\n`;
   for (const ref of moduleRefs) {
-    refs += `    <ProjectReference Include="${ref}" />\n`;
+    refs += `    <ProjectReference Include="${ref}" AdditionalProperties="ExpoModulesCoreProject=${coreRef}" />\n`;
   }
 
   return `<Project Sdk="Microsoft.NET.Sdk">
@@ -81,8 +82,8 @@ export function generateDeployTargets(
   for (const proj of allProjects) {
     const propName = `_Expo_${sanitizePropName(proj.assemblyName)}_OutputDir`;
     const csprojDir = targetsDir
-      ? path.relative(targetsDir, path.dirname(proj.csprojPath)).replace(/\//g, '\\')
-      : path.dirname(proj.csprojPath).replace(/\//g, '\\');
+      ? winPath.relative(targetsDir, winPath.dirname(proj.csprojPath))
+      : winPath.dirname(proj.csprojPath);
     const prefix = targetsDir ? '$(MSBuildThisFileDirectory)' : '';
     const sep = csprojDir ? '\\' : '';
     propertyLines += `    <${propName}>${prefix}${csprojDir}${sep}bin\\$(Platform)\\$(Configuration)\\${TFM}\\</${propName}>\n`;

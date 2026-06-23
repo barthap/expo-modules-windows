@@ -7,7 +7,7 @@ This document explains how the Expo Modules autolinking system works on Windows,
 The autolinking CLI discovers Expo modules in your project's dependencies, generates build artifacts, and patches your Visual Studio solution so that adding a new module is just `npm install` + one command.
 
 ```
-npx expo-modules-autolinking autolink-windows \
+bunx expo-modules-windows-core autolink-windows \
   --sln windows/MyApp.sln \
   --app-proj windows/MyApp/MyApp.vcxproj
 ```
@@ -73,7 +73,9 @@ This file tells the autolinking system about your module. Place it at the packag
 
 ### 3. `.csproj` File
 
-Your C# project must target the same framework as the core library and reference `Expo.Modules.Core`:
+Your C# project must target the same framework as the core library and reference
+`Expo.Modules.Core` through the `ExpoModulesCoreProject` MSBuild property that
+autolinking passes to module projects:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -86,14 +88,15 @@ Your C# project must target the same framework as the core library and reference
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="$(ExpoModulesCoreProject)"
-                      Condition="'$(ExpoModulesCoreProject)' != ''" />
-    <!-- Fallback for standalone development: -->
-    <ProjectReference Include="path/to/Expo.Modules.Core.csproj"
-                      Condition="'$(ExpoModulesCoreProject)' == ''" />
+    <ProjectReference Include="$(ExpoModulesCoreProject)" />
   </ItemGroup>
 </Project>
 ```
+
+Do not add a hard-coded fallback reference for app-local modules. The generated
+`ExpoModulesAutolinked.csproj` supplies `ExpoModulesCoreProject` so the same
+module can move between app-local development and package form without editing
+its project file.
 
 > **Tip:** The `<AssemblyName>` value determines the output DLL filename. The autolinking reads this to generate correct deploy targets. If omitted, it defaults to the project filename.
 
@@ -152,7 +155,7 @@ If you omit the `modules` array in `expo-module.config.json`, the autolinking sc
 ### `autolink-windows`
 
 ```
-npx expo-modules-autolinking autolink-windows [searchPaths...] [options]
+bunx expo-modules-windows-core autolink-windows [searchPaths...] [options]
 ```
 
 **Options:**
@@ -265,6 +268,36 @@ Modules in your app's `modules/` directory (the default `nativeModulesDir`) are 
 Example for a local module:
 
 ```
+
+Minimal local module project:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
+    <AssemblyName>LocalCounter</AssemblyName>
+    <RootNamespace>LocalCounter</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(ExpoModulesCoreProject)" />
+  </ItemGroup>
+</Project>
+```
+
+`expo-module.config.json`:
+
+```json
+{
+  "platforms": ["windows"],
+  "windows": {
+    "modules": ["LocalCounter.LocalCounterModule"],
+    "projectPath": "LocalCounter.csproj"
+  }
+}
+```
 my-app/
 ├── modules/
 │   └── my-local-module/
@@ -307,7 +340,8 @@ At runtime, the C++ host (`ExpoModuleHost`) uses HostFXR to load the .NET runtim
 **Build errors after autolinking:**
 - Run `autolink-windows` again — it will clean up stale references
 - Verify all module `.csproj` files target `net9.0-windows10.0.19041.0`
-- Ensure modules reference `Expo.Modules.Core` as a `<ProjectReference>`
+- Ensure modules reference `Expo.Modules.Core` with
+  `<ProjectReference Include="$(ExpoModulesCoreProject)" />`
 
 **MSIX deployment failures:**
 - Check that the `.g.targets` file is imported in the `.vcxproj`

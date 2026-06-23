@@ -2,11 +2,12 @@
 
 Expo Modules Core implementation for Windows, enabling C# developers to write React Native Windows native modules using the Expo Modules declarative DSL — without touching C++ boilerplate.
 
-> **Status:** HostFXR-based MVP with Expo's shared C++ runtime layer.
+> **Status:** HostFXR-based MVP for apps created with
+> [expo-desktop](https://github.com/shirakaba/expo-desktop).
 > Sync/async functions, constants, events (with real `EventEmitter` subscriptions),
 > build integration, and Windows Expo autolinking are working.
-> The C++ layer is vendored from [expo-desktop](https://github.com/shirakaba/expo-desktop)
-> (Expo SDK 54, MSVC-patched), giving JS API parity with iOS/Android.
+> `expo-desktop-modules-core` owns the Expo JS runtime on Windows; this package
+> adds the C# module host and managed autolinking on top of it.
 > View components and NativeAOT mode are the next major milestones.
 
 ## How It Works
@@ -40,11 +41,17 @@ public class BatteryModule : Module
 
 Modules are accessible from JavaScript as `global.expo.modules.Battery.getBatteryLevel()`.
 
-Under the hood, a single C++ TurboModule registers with React Native Windows, loads the .NET runtime via HostFXR, and installs Expo's shared C++ class hierarchy (`EventEmitter`, `NativeModule`, `SharedObject`, `SharedRef`) on `global.expo`. Each C# module is wrapped as a `NativeModule` instance (inheriting `EventEmitter`) on `global.expo.modules`, with lazy initialization via `LazyObject`. See [docs/DESIGN.md](docs/DESIGN.md) for the full architecture, [docs/CODE_FLOW.md](docs/CODE_FLOW.md) for the call path from JS to C#, and [docs/EXPO_DESKTOP.md](docs/EXPO_DESKTOP.md) for our relationship with the expo-desktop project.
+Under the hood, `expo-desktop-modules-core` installs Expo's shared JS runtime classes (`EventEmitter`, `NativeModule`, `SharedObject`, `SharedRef`) on `global.expo`. This package registers a single C++ TurboModule with React Native Windows, loads the .NET runtime via HostFXR, and replaces `global.expo.modules` with a host object that serves C# modules while delegating unknown names back to expo-desktop's original modules object. Each C# module is wrapped as a `NativeModule` instance with lazy initialization via `LazyObject`. See [docs/DESIGN.md](docs/DESIGN.md), [docs/CODE_FLOW.md](docs/CODE_FLOW.md), and [docs/EXPO_DESKTOP.md](docs/EXPO_DESKTOP.md).
 
 ## Prerequisites
 
-- **Windows 10/11** with Visual Studio 2022 (v17.0+)
+- **Windows 10/11** with the Visual Studio toolchain required by your
+  `react-native-windows` version. Current expo-desktop fresh apps resolved to
+  RNW 0.81.29 during verification, whose health checks require Visual Studio /
+  MSBuild 18.6+ with VCTools. Visual Studio 2022 17.14 is not sufficient for
+  that generated app shape.
+- An app created with `expo-desktop create-app`, or an RNW app that installs
+  `expo-desktop-modules-core` and `expo-desktop-stubs`
 - **React Native Windows** 0.81+ (New Architecture)
 - **.NET 9 SDK** (`winget install Microsoft.DotNet.SDK.9`)
 - **Node.js** 18+ and **Yarn**
@@ -52,15 +59,14 @@ Under the hood, a single C++ TurboModule registers with React Native Windows, lo
 ## Installation
 
 ```bash
-npm install expo-modules-windows-core
-# or
-yarn add expo-modules-windows-core
+bunx expo-desktop@latest create-app
+bun add expo-modules-windows-core
 ```
 
-Then run autolinking to wire everything up:
+Then run Expo Windows autolinking after adding or removing C# modules:
 
 ```bash
-npx expo-modules-autolinking autolink-windows \
+bunx expo-modules-windows-core autolink-windows \
   --sln windows/MyApp.sln \
   --app-proj windows/MyApp/MyApp.vcxproj
 ```
@@ -142,7 +148,7 @@ The autolinking CLI automates all build integration. After installing a module
 package, run:
 
 ```bash
-npx expo-modules-autolinking autolink-windows \
+bunx expo-modules-windows-core autolink-windows \
   --sln windows/MyApp.sln \
   --app-proj windows/MyApp/MyApp.vcxproj
 ```
@@ -181,7 +187,7 @@ yarn install
 
 # Run autolinking
 cd example
-npx expo-modules-autolinking autolink-windows \
+bunx expo-modules-windows-core autolink-windows \
   --sln windows/ExpoModulesWindowsCoreExample.sln \
   --app-proj windows/ExpoModulesWindowsCoreExample/ExpoModulesWindowsCoreExample.vcxproj
 

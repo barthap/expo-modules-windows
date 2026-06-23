@@ -1,4 +1,11 @@
-# expo-desktop Coexistence Implementation Plan
+# Superseded: expo-desktop Coexistence Implementation Plan
+
+> Superseded by the expo-desktop-required runtime model. Do not use this as an
+> implementation plan for new work; standalone setup and optional coexistence
+> are no longer active goals.
+>
+> The remaining unchecked tasks and code snippets below are retained only as
+> historical context. They intentionally conflict with the active runtime model.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

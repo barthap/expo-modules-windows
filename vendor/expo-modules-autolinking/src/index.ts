@@ -10,7 +10,7 @@ import { createMemoizer } from './memoize';
 
 async function main(args: string[]) {
   const cli = commander
-    .version(require('expo-modules-autolinking/package.json').version)
+    .version(require('../package.json').version)
     .description('CLI command that searches for native modules to autolink them.');
 
   verifyCommand(cli);

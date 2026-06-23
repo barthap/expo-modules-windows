@@ -1,7 +1,12 @@
-# Spec: Integrate Expo's Shared C++ Layer
+# Historical Spec: Integrate Expo's Shared C++ Layer
 
 > Date: 2026-05-29
-> Status: Implemented (2026-05-30)
+> Status: Implemented (2026-05-30), partially superseded
+
+This document records the original integration that moved this package onto
+Expo's shared C++ layer. The active runtime model has since changed:
+`expo-desktop-modules-core` owns `global.expo` and installs the Expo JS class
+hierarchy, while this package composes C# modules into that runtime.
 
 ## Problem
 
@@ -224,25 +229,23 @@ Initialize(reactContext):
     callInvoker = reactContext.CallInvoker()
     
     callInvoker->invokeAsync([&host, callInvoker](Runtime& rt):
-      // Install class hierarchy
-      expo = Object(rt)
-      rt.global().setProperty(rt, "expo", expo)
-      EventEmitter::installClass(rt)
-      SharedObject::installBaseClass(rt, no-op releaser)
-      SharedRef::installBaseClass(rt)
-      NativeModule::installClass(rt)
+      // Require expo-desktop to have installed the Expo runtime.
+      expo = rt.global().getPropertyAsObject(rt, "expo")
+      require expo.EventEmitter
+      require expo.NativeModule
+      require expo.modules
       
-      // Install modules host object
-      hostObj = make_shared<ExpoModulesHostObject>(host, callInvoker)
-      expoObj = rt.global().getPropertyAsObject(rt, "expo")
-      expoObj.setProperty(rt, "modules", createFromHostObject(rt, hostObj))
+      // Compose Windows C# modules over the expo-desktop module stubs.
+      expoDesktopModules = expo.getPropertyAsObject(rt, "modules")
+      hostObj = make_shared<ExpoModulesHostObject>(host, callInvoker, expoDesktopModules)
+      expo.setProperty(rt, "modules", createFromHostObject(rt, hostObj))
       
       // Wire event bridge
       eventCtx = new EventBridgeContext{ callInvoker, hostObj.get(), &host }
       host.SetEventCallback(&EventCallbackTrampoline, eventCtx)
     )
   catch:
-    // Set global.expo.__initError (same as current)
+    // Throw loudly; only annotate global.expo.__initError if expo-desktop already created it
 ```
 
 ### 6. C# Event Contract Changes

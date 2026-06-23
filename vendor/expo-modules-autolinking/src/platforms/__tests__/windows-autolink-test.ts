@@ -2,16 +2,16 @@ import {
   generateAutolinkedCsproj,
   generateDeployTargets,
   generateProvider,
-  AutolinkedProject,
 } from '../windows/generators';
 import {
   updateSolution,
   createSlnProject,
   generateDeterministicGuid,
-  SlnProject,
 } from '../windows/slnUtils';
 import { updateVcxproj } from '../windows/vcxprojUtils';
 import type { ModuleDescriptorWindows } from '../../types';
+import type { AutolinkedProject } from '../windows/generators';
+import type { SlnProject } from '../windows/slnUtils';
 
 // ─── generators tests ───
 
@@ -43,6 +43,24 @@ describe('generateAutolinkedCsproj', () => {
     expect(result).toContain('Battery.csproj');
     expect(result).toContain('Clipboard.csproj');
     expect(result).toContain('Expo.Modules.Core.csproj');
+  });
+
+  it('passes ExpoModulesCoreProject to local module projects', () => {
+    const modules: AutolinkedProject[] = [
+      {
+        csprojPath: 'C:\\repo\\app\\modules\\LocalCounter\\LocalCounter.csproj',
+        assemblyName: 'LocalCounter',
+      },
+    ];
+
+    const result = generateAutolinkedCsproj(
+      coreProject,
+      modules,
+      'C:\\repo\\app\\windows\\MyApp\\ExpoModulesAutolinked'
+    );
+
+    expect(result).toContain('ProjectReference Include="..\\..\\..\\modules\\LocalCounter\\LocalCounter.csproj"');
+    expect(result).toContain('AdditionalProperties="ExpoModulesCoreProject=..\\..\\..\\..\\dotnet\\Expo.Modules.Core\\Expo.Modules.Core.csproj"');
   });
 
   it('uses backslash path separators', () => {

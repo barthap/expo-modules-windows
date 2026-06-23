@@ -14,7 +14,7 @@ The core MVP stack is implemented in-tree:
 | HostFXR proof of concept | Done | Standalone host loading validated before integrating with RNW. |
 | C# core library (`Expo.Modules.Core`) | Done | Module DSL, registry, JSON type conversion, lifecycle, events, interop entry points. |
 | C++ host bridge | Done | Single TurboModule, JSI HostObject, HostFXR runtime loader, async callback path. |
-| Expo shared C++ layer | Done | Vendored from expo-desktop (SDK 54, MSVC-patched). EventEmitter, NativeModule, SharedObject, SharedRef, LazyObject. See [EXPO_DESKTOP.md](EXPO_DESKTOP.md). |
+| Expo shared C++ layer | Done | Runtime class installation is owned by `expo-desktop-modules-core`; this package vendors the MSVC-patched shared C++ files it calls directly. See [EXPO_DESKTOP.md](EXPO_DESKTOP.md). |
 | Build integration | Done | Managed deployment targets, `nethost` packaging, VS/MSIX build path working. |
 | Windows Expo autolinking | Done | `autolink-windows` command, generated hub project, `.sln`/`.vcxproj` patching, generated provider and deploy targets. |
 
@@ -22,8 +22,7 @@ The core MVP stack is implemented in-tree:
 
 These are not new platform pillars, but they still matter:
 
-- Tighten the consumer packaging story so the Windows autolinking CLI is
-  delivered and discoverable outside this repo.
+- Keep the consumer packaging story aligned with expo-desktop-created apps.
 - Hook the Expo autolinking command into the example app workflow so a fresh
   clone does not depend on pre-generated local artifacts.
 - Continue aligning docs with the implemented Step 5 build shape.

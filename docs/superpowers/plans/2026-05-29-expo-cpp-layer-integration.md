@@ -1,4 +1,11 @@
-# Expo Shared C++ Layer Integration — Implementation Plan
+# Superseded Plan: Expo Shared C++ Layer Integration
+
+> Status: Historical. This plan describes the 2026-05-29/2026-05-30
+> implementation that installed Expo classes and `global.expo` from this
+> package. It is not an active implementation plan. The current runtime model
+> requires `expo-desktop-modules-core` to install `global.expo`, `EventEmitter`,
+> `NativeModule`, and `global.expo.modules`; this package only composes C#
+> modules into that expo-desktop-owned runtime.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

@@ -1,6 +1,6 @@
 // ExpoModulesHostObject.h — Top-level JSI HostObject on global.expo.modules.
 // Maps module names to LazyObject-wrapped NativeModule instances.
-// When expo-desktop is present, falls through to its modules for unknown names.
+// Unknown names are delegated to expo-desktop's original modules object.
 
 #pragma once
 
@@ -20,7 +20,7 @@ class ExpoModulesHostObject : public facebook::jsi::HostObject {
 public:
     ExpoModulesHostObject(ExpoModuleHost& host,
                           std::shared_ptr<facebook::react::CallInvoker> callInvoker,
-                          std::shared_ptr<facebook::jsi::Object> fallbackModules = nullptr);
+                          std::shared_ptr<facebook::jsi::Object> expoDesktopModules);
 
     facebook::jsi::Value get(facebook::jsi::Runtime& rt,
                              const facebook::jsi::PropNameID& name) override;
@@ -36,10 +36,9 @@ private:
     ExpoModuleHost& m_host;
     std::shared_ptr<facebook::react::CallInvoker> m_callInvoker;
 
-    // When expo-desktop is installed, holds a reference to its original
-    // global.expo.modules object. get() falls through to this for names
-    // that aren't C# modules. nullptr in standalone mode.
-    std::shared_ptr<facebook::jsi::Object> m_fallbackModules;
+    // expo-desktop owns the Expo JS runtime. This keeps its original
+    // global.expo.modules object available for non-C# module names.
+    std::shared_ptr<facebook::jsi::Object> m_expoDesktopModules;
 
     // All map access must occur on the JS thread (get() via JSI, getModuleJsObject()
     // via callInvoker->invokeAsync). No mutex needed.
