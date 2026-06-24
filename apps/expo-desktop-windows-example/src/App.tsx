@@ -6,7 +6,6 @@ type ExpoGlobal = typeof globalThis & {
   expo?: {
     modules?: Record<string, any>;
     __initError?: string;
-    __windowsCoreMode?: string;
   };
 };
 
@@ -27,10 +26,6 @@ function getExampleModule() {
 
 function getInitError(): string | undefined {
   return expoGlobal.expo?.__initError;
-}
-
-function getWindowsCoreMode(): string {
-  return expoGlobal.expo?.__windowsCoreMode ?? 'not initialized';
 }
 
 function getExpoModuleNames(): string[] {
@@ -83,7 +78,6 @@ export default function App() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Runtime Info</Text>
-        <Text>Mode: {getWindowsCoreMode()}</Text>
         <Text>Modules: {getExpoModuleNames().join(', ') || 'none'}</Text>
         <Text>TurboModule multiply(3, 7) = {turboMultiply}</Text>
       </View>
