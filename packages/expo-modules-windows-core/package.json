@@ -1,0 +1,72 @@
+{
+  "name": "expo-modules-windows-core",
+  "version": "0.1.0",
+  "description": "Expo Modules Core host for Windows apps created with expo-desktop.",
+  "main": "./src/index.tsx",
+  "module": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "exports": {
+    ".": {
+      "types": "./src/index.tsx",
+      "default": "./src/index.tsx"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "bin",
+    "windows",
+    "dotnet/Expo.Modules.Core",
+    "vendor/expo-modules-autolinking/build",
+    "vendor/expo-modules-autolinking/package.json",
+    "react-native.config.js",
+    "NuGet.config",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/bin",
+    "!**/obj",
+    "!**/.DS_Store"
+  ],
+  "bin": {
+    "expo-modules-windows-core": "bin/expo-modules-autolinking.js",
+    "expo-modules-windows-autolinking": "bin/expo-modules-autolinking.js"
+  },
+  "keywords": [
+    "expo",
+    "expo-desktop",
+    "react-native-windows",
+    "windows"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@expo/require-utils": "^55.0.2",
+    "@expo/spawn-async": "^1.7.2",
+    "chalk": "^4.1.0",
+    "commander": "^7.2.0"
+  },
+  "peerDependencies": {
+    "expo-desktop-modules-core": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-windows": "*"
+  },
+  "codegenConfig": {
+    "name": "RNExpoModulesWindowsCoreSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "includesGeneratedCode": true,
+    "windows": {
+      "namespace": "ExpoModulesWindowsCoreCodegen",
+      "outputDirectory": "windows/ExpoModulesWindowsCore/codegen",
+      "separateDataTypes": true
+    }
+  },
+  "react-native-windows": {
+    "init-windows": {
+      "name": "ExpoModulesWindowsCore",
+      "namespace": "ExpoModulesWindowsCore",
+      "template": "cpp-lib"
+    }
+  }
+}

@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Expo Common">
+      <UniqueIdentifier>{B2E3A1F0-1234-5678-9ABC-DEF012345678}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="common\cpp\JSIUtils.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cpp\ObjectDeallocator.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cpp\EventEmitter.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cpp\NativeModule.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cpp\SharedObject.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cpp\SharedRef.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cpp\LazyObject.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cpp\TypedArray.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="common\cpp\BridgelessJSCallInvoker.h">
+      <Filter>Expo Common</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ExpoModulesWindowsCore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ExpoViewManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="common\cpp\JSIUtils.cpp">
+      <Filter>Expo Common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\cpp\ObjectDeallocator.cpp">
+      <Filter>Expo Common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\cpp\EventEmitter.cpp">
+      <Filter>Expo Common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\cpp\NativeModule.cpp">
+      <Filter>Expo Common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\cpp\SharedObject.cpp">
+      <Filter>Expo Common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\cpp\SharedRef.cpp">
+      <Filter>Expo Common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\cpp\LazyObject.cpp">
+      <Filter>Expo Common</Filter>
+    </ClCompile>
+    <ClCompile Include="common\cpp\TypedArray.cpp">
+      <Filter>Expo Common</Filter>
+    </ClCompile>
+    <ClCompile Include="ExpoModulesWindowsCore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ExpoViewManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="ExpoModulesWindowsCore.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

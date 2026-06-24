@@ -2,14 +2,18 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
-      "expo-modules-windows-core": ["./src/index"]
+      "expo-modules-windows-core": [
+        "./packages/expo-modules-windows-core/src/index"
+      ]
     },
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
-    "lib": ["ESNext"],
+    "lib": [
+      "ESNext"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "noEmit": true,
@@ -27,5 +31,10 @@
     "target": "ESNext",
     "verbatimModuleSyntax": true
   },
-  "exclude": ["vendor/expo-modules-autolinking"]
+  "include": [
+    "packages/expo-modules-windows-core/src/**/*"
+  ],
+  "exclude": [
+    "packages/expo-modules-windows-core/vendor/expo-modules-autolinking"
+  ]
 }

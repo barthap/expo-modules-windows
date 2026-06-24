@@ -1,0 +1,13 @@
+{
+  "name": "expo-modules-autolinking",
+  "version": "55.0.8",
+  "description": "Vendored Windows autolinking runtime used by expo-modules-windows-core.",
+  "main": "build/index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@expo/require-utils": "^55.0.2",
+    "@expo/spawn-async": "^1.7.2",
+    "chalk": "^4.1.0",
+    "commander": "^7.2.0"
+  }
+}

@@ -27,6 +27,7 @@ if (-not $RepoRoot) {
   $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
   $RepoRoot = (Resolve-Path (Join-Path $scriptRoot '..\..')).Path
 }
+$PackageRoot = $null
 
 function Write-Step([string]$Message) {
   Write-Host "`n==> $Message"
@@ -659,6 +660,27 @@ function Stop-ExistingAppProcesses {
   }
 }
 
+function Stop-ProcessesUsingPath {
+  param([string]$Path)
+
+  if (-not $Path) {
+    return
+  }
+
+  $running = Get-CimInstance Win32_Process |
+    Where-Object { $_.CommandLine -and $_.CommandLine -like "*$Path*" }
+
+  if (-not $running) {
+    return
+  }
+
+  Write-Step "Stopping processes using app path $Path"
+  foreach ($process in $running) {
+    Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+  }
+  Start-Sleep -Seconds 2
+}
+
 function Stop-ProcessUsingPort {
   param([int]$Port)
 
@@ -671,6 +693,25 @@ function Stop-ProcessUsingPort {
   Write-Step "Stopping existing process on Metro port $Port"
   foreach ($processId in $processIds) {
     Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+  }
+  Start-Sleep -Seconds 2
+}
+
+function Remove-InstalledAppPackage {
+  param([string]$Name)
+
+  if (-not $Name) {
+    return
+  }
+
+  $packages = @(Get-AppxPackage -Name $Name -ErrorAction SilentlyContinue)
+  if ($packages.Count -eq 0) {
+    return
+  }
+
+  Write-Step "Removing existing AppX package registration $Name"
+  foreach ($package in $packages) {
+    Remove-AppxPackage -Package $package.PackageFullName -ErrorAction SilentlyContinue
   }
   Start-Sleep -Seconds 2
 }
@@ -688,11 +729,13 @@ function Register-And-LaunchApp {
     throw "Could not find built AppxManifest.xml under $WindowsDir"
   }
 
-  Add-AppxPackage -Path $manifest.FullName -Register -ForceApplicationShutdown -ErrorAction Stop
-
   [xml]$manifestXml = Get-Content -Raw -LiteralPath $manifest.FullName
   $identityName = [string]$manifestXml.Package.Identity.Name
   $applicationId = [string]($manifestXml.Package.Applications.Application | Select-Object -First 1).Id
+  Remove-InstalledAppPackage -Name $identityName
+
+  Add-AppxPackage -Path $manifest.FullName -Register -ForceApplicationShutdown -ErrorAction Stop
+
   $package = Get-AppxPackage -Name $identityName |
     Sort-Object InstallLocation -Descending |
     Select-Object -First 1
@@ -720,6 +763,14 @@ try {
   if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot 'package.json'))) {
     throw "RepoRoot does not look like this repository: $RepoRoot"
   }
+  $PackageRoot = Join-Path $RepoRoot 'packages\expo-modules-windows-core'
+  if (-not (Test-Path -LiteralPath (Join-Path $PackageRoot 'package.json'))) {
+    throw "Could not find expo-modules-windows-core package workspace at $PackageRoot"
+  }
+  $packageJson = Get-Content -Raw -LiteralPath (Join-Path $PackageRoot 'package.json') | ConvertFrom-Json
+  if ($packageJson.name -ne 'expo-modules-windows-core') {
+    throw "Package workspace at $PackageRoot is named '$($packageJson.name)', expected expo-modules-windows-core."
+  }
 
   New-Item -ItemType Directory -Force $ArtifactsDir | Out-Null
   Assert-Command 'bun'
@@ -739,6 +790,10 @@ try {
     $AppPath = Join-Path $WorkRoot $AppName
   }
 
+  Stop-ProcessesUsingPath -Path $AppPath
+  Stop-ProcessUsingPort -Port $MetroPort
+  Remove-InstalledAppPackage -Name $AppName
+
   if (-not $ExistingAppPath -and -not $SkipCreateApp) {
     if (Test-Path -LiteralPath $AppPath) {
       Remove-Item -LiteralPath $AppPath -Recurse -Force
@@ -755,7 +810,7 @@ try {
 
   Write-Step 'Packing local expo-modules-windows-core package'
   # Equivalent command: bun pm pack --filename <artifacts>/expo-modules-windows-core-e2e.tgz
-  Invoke-LoggedCommand -Label 'bun-pm-pack-local-package' -FilePath 'bun' -Arguments @('pm', 'pack', '--filename', $packageTarball) -WorkingDirectory $RepoRoot
+  Invoke-LoggedCommand -Label 'bun-pm-pack-local-package' -FilePath 'bun' -Arguments @('pm', 'pack', '--filename', $packageTarball) -WorkingDirectory $PackageRoot
 
   Write-Step 'Installing packed expo-modules-windows-core package'
   Invoke-LoggedCommand -Label 'bun-add-local-package' -FilePath 'bun' -Arguments @('add', $packageTarball) -WorkingDirectory $AppPath
@@ -809,6 +864,7 @@ try {
   Copy-Item -LiteralPath $TempProofPath -Destination $proofCopy -Force
   $summary = [pscustomobject]@{
     repoRoot = $RepoRoot
+    packageRoot = $PackageRoot
     appPath = $AppPath
     artifactsDir = $ArtifactsDir
     proofPath = $proofCopy
