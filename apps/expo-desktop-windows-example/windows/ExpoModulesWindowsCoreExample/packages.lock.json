@@ -8,6 +8,12 @@
         "resolved": "1.84.0",
         "contentHash": "4el2YP3cNJDVFPdzOso+LxGvdWP2rHxML4siq8VdonNypW2m4q503tHfCj6vK0L1UfxioE2hpFGb4ITEua73tg=="
       },
+      "Microsoft.JavaScript.Hermes": {
+        "type": "Direct",
+        "requested": "[0.0.0-2604.21001-94aa5e1d, )",
+        "resolved": "0.0.0-2604.21001-94aa5e1d",
+        "contentHash": "8eHA3O043jIeK7E1gJbzgsdujaDTIBwLSl6pZj7CdQl+ryFqaW88XVU9ogWJPxk5lR2T4cU/OlEJfZynqoyYew=="
+      },
       "Microsoft.ReactNative": {
         "type": "Direct",
         "requested": "[0.81.29, )",
@@ -143,6 +149,138 @@
           "Microsoft.Web.WebView2": "1.0.3179.45",
           "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
           "Microsoft.WindowsAppSDK.Foundation": "1.8.260505001",
+          "Microsoft.WindowsAppSDK.InteractiveExperiences": "1.8.260430001"
+        }
+      },
+      "expomodulescore": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.ReactNative": "[0.81.29, )",
+          "Microsoft.ReactNative.Cxx": "[0.81.29, )",
+          "Microsoft.VCRTForwarders.140": "[1.0.2-rc, )",
+          "Microsoft.WindowsAppSDK": "[1.8.260508005, )",
+          "boost": "[1.84.0, )"
+        }
+      },
+      "expomoduleswindowscore": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.ReactNative": "[0.81.29, )",
+          "Microsoft.ReactNative.Cxx": "[0.81.29, )",
+          "Microsoft.VCRTForwarders.140": "[1.0.2-rc, )",
+          "Microsoft.WindowsAppSDK": "[1.8.260508005, )",
+          "boost": "[1.84.0, )"
+        }
+      }
+    },
+    "native,Version=v0.0/win": {
+      "Microsoft.ReactNative": {
+        "type": "Direct",
+        "requested": "[0.81.29, )",
+        "resolved": "0.81.29",
+        "contentHash": "hxWaUI+6Ay2WAqrnArdB7kZ8Lvw7V2XTAPtMfiujJr0KcR21H8x4hSXJouO+VfZYD/KvbOZMwVGzaAeLliBMnw=="
+      },
+      "Microsoft.VCRTForwarders.140": {
+        "type": "Direct",
+        "requested": "[1.0.2-rc, )",
+        "resolved": "1.0.2-rc",
+        "contentHash": "/r+sjtEeCIGyDhobIZ5hSmYhC/dSyGZxf1SxYJpElUhB0LMCktOMFs9gXrauXypIFECpVynNyVjAmJt6hjJ5oQ=="
+      },
+      "Microsoft.Web.WebView2": {
+        "type": "Transitive",
+        "resolved": "1.0.3179.45",
+        "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
+      },
+      "Microsoft.WindowsAppSDK.Foundation": {
+        "type": "Transitive",
+        "resolved": "1.8.260505001",
+        "contentHash": "41SSoEn3sKKCAVPA/w18zVJwV1C7aDEkPS2f6Zyp19m27tDEmteEp0XS3Ln3b0ElYR4FfPEPvIDbJPSA9vePGw==",
+        "dependencies": {
+          "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
+          "Microsoft.WindowsAppSDK.InteractiveExperiences": "1.8.260430001"
+        }
+      }
+    },
+    "native,Version=v0.0/win-arm64": {
+      "Microsoft.ReactNative": {
+        "type": "Direct",
+        "requested": "[0.81.29, )",
+        "resolved": "0.81.29",
+        "contentHash": "hxWaUI+6Ay2WAqrnArdB7kZ8Lvw7V2XTAPtMfiujJr0KcR21H8x4hSXJouO+VfZYD/KvbOZMwVGzaAeLliBMnw=="
+      },
+      "Microsoft.VCRTForwarders.140": {
+        "type": "Direct",
+        "requested": "[1.0.2-rc, )",
+        "resolved": "1.0.2-rc",
+        "contentHash": "/r+sjtEeCIGyDhobIZ5hSmYhC/dSyGZxf1SxYJpElUhB0LMCktOMFs9gXrauXypIFECpVynNyVjAmJt6hjJ5oQ=="
+      },
+      "Microsoft.Web.WebView2": {
+        "type": "Transitive",
+        "resolved": "1.0.3179.45",
+        "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
+      },
+      "Microsoft.WindowsAppSDK.Foundation": {
+        "type": "Transitive",
+        "resolved": "1.8.260505001",
+        "contentHash": "41SSoEn3sKKCAVPA/w18zVJwV1C7aDEkPS2f6Zyp19m27tDEmteEp0XS3Ln3b0ElYR4FfPEPvIDbJPSA9vePGw==",
+        "dependencies": {
+          "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
+          "Microsoft.WindowsAppSDK.InteractiveExperiences": "1.8.260430001"
+        }
+      }
+    },
+    "native,Version=v0.0/win-x64": {
+      "Microsoft.ReactNative": {
+        "type": "Direct",
+        "requested": "[0.81.29, )",
+        "resolved": "0.81.29",
+        "contentHash": "hxWaUI+6Ay2WAqrnArdB7kZ8Lvw7V2XTAPtMfiujJr0KcR21H8x4hSXJouO+VfZYD/KvbOZMwVGzaAeLliBMnw=="
+      },
+      "Microsoft.VCRTForwarders.140": {
+        "type": "Direct",
+        "requested": "[1.0.2-rc, )",
+        "resolved": "1.0.2-rc",
+        "contentHash": "/r+sjtEeCIGyDhobIZ5hSmYhC/dSyGZxf1SxYJpElUhB0LMCktOMFs9gXrauXypIFECpVynNyVjAmJt6hjJ5oQ=="
+      },
+      "Microsoft.Web.WebView2": {
+        "type": "Transitive",
+        "resolved": "1.0.3179.45",
+        "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
+      },
+      "Microsoft.WindowsAppSDK.Foundation": {
+        "type": "Transitive",
+        "resolved": "1.8.260505001",
+        "contentHash": "41SSoEn3sKKCAVPA/w18zVJwV1C7aDEkPS2f6Zyp19m27tDEmteEp0XS3Ln3b0ElYR4FfPEPvIDbJPSA9vePGw==",
+        "dependencies": {
+          "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
+          "Microsoft.WindowsAppSDK.InteractiveExperiences": "1.8.260430001"
+        }
+      }
+    },
+    "native,Version=v0.0/win-x86": {
+      "Microsoft.ReactNative": {
+        "type": "Direct",
+        "requested": "[0.81.29, )",
+        "resolved": "0.81.29",
+        "contentHash": "hxWaUI+6Ay2WAqrnArdB7kZ8Lvw7V2XTAPtMfiujJr0KcR21H8x4hSXJouO+VfZYD/KvbOZMwVGzaAeLliBMnw=="
+      },
+      "Microsoft.VCRTForwarders.140": {
+        "type": "Direct",
+        "requested": "[1.0.2-rc, )",
+        "resolved": "1.0.2-rc",
+        "contentHash": "/r+sjtEeCIGyDhobIZ5hSmYhC/dSyGZxf1SxYJpElUhB0LMCktOMFs9gXrauXypIFECpVynNyVjAmJt6hjJ5oQ=="
+      },
+      "Microsoft.Web.WebView2": {
+        "type": "Transitive",
+        "resolved": "1.0.3179.45",
+        "contentHash": "3pokSH5CnN0G6rGhGFo1y87inxYhNxBQ2Vdf0wlvBj99KHxQJormjDACmqRnFeUsmuNFIhWwfAL1ztq7wD5qRA=="
+      },
+      "Microsoft.WindowsAppSDK.Foundation": {
+        "type": "Transitive",
+        "resolved": "1.8.260505001",
+        "contentHash": "41SSoEn3sKKCAVPA/w18zVJwV1C7aDEkPS2f6Zyp19m27tDEmteEp0XS3Ln3b0ElYR4FfPEPvIDbJPSA9vePGw==",
+        "dependencies": {
+          "Microsoft.WindowsAppSDK.Base": "1.8.251216001",
           "Microsoft.WindowsAppSDK.InteractiveExperiences": "1.8.260430001"
         }
       }

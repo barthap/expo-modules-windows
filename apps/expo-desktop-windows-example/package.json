@@ -1,0 +1,39 @@
+{
+  "name": "expo-desktop-windows-example",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "bunx react-native start",
+    "windows": "bunx react-native run-windows",
+    "autolink:windows": "powershell -ExecutionPolicy Bypass -File ./scripts/autolink-windows.ps1"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.25.0",
+    "@react-native/new-app-screen": "0.81.6",
+    "expo-desktop-modules-core": "^54.0.0",
+    "expo-modules-windows-core": "workspace:*",
+    "react": "19.1.4",
+    "react-native": "0.81.6",
+    "react-native-safe-area-context": "^5.5.2",
+    "react-native-windows": "0.81.29"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@react-native-community/cli": "20.0.0",
+    "@react-native/babel-preset": "0.81.6",
+    "@react-native/metro-config": "0.81.6",
+    "@react-native/typescript-config": "0.81.6",
+    "@types/react": "~19.1.0",
+    "escape-string-regexp": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "react-native-windows": {
+    "init-windows": {
+      "name": "ExpoModulesWindowsCoreExample",
+      "namespace": "ExpoModulesWindowsCoreExample",
+      "template": "cpp-app"
+    }
+  }
+}

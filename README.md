@@ -28,6 +28,10 @@ the stubs installed by expo-desktop.
 |   |                                Vendored Windows autolinking CLI fork
 |   |-- bin/                         Package CLI entry points
 |   `-- react-native.config.js       RNW dependency config
+|-- apps/expo-desktop-windows-example/
+|   |                                Checked-in Windows dev app
+|   |-- modules/ExampleModule/       Local C# Expo module sample
+|   `-- windows/                     RNW Windows app
 |-- scripts/e2e/
 |   `-- windows-localcounter-smoke.ps1
 |-- tests/                           Bun contract tests
@@ -48,6 +52,14 @@ bunx expo-modules-windows-core autolink-windows `
 
 The local development proof packs the workspace package first, then installs
 the tarball into a fresh app outside this repo.
+
+## Manual Example App
+
+The checked-in development app lives at
+`apps/expo-desktop-windows-example`. It is useful for manual Windows iteration
+against the workspace package and contains a local C# Expo module sample. It is
+not the acceptance proof; the E2E smoke script remains the repeatable proof
+against a fresh expo-desktop app outside the repo.
 
 ## Local Verification
 

@@ -32,6 +32,7 @@
     "verbatimModuleSyntax": true
   },
   "include": [
+    "apps/expo-desktop-windows-example/src/**/*",
     "packages/expo-modules-windows-core/src/**/*"
   ],
   "exclude": [

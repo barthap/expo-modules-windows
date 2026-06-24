@@ -19,6 +19,7 @@ lib/
 # Generated native/autolinking output
 **/ExpoModulesAutolinked/
 **/ExpoModulesAutolinked.g.targets
+**/ExpoModulesAutolinked.Package.g.targets
 packages/expo-modules-windows-core/windows/ExpoModulesWindowsCore/generated/
 
 # Vendored autolinking build output is intentionally checked in.

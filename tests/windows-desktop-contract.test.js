@@ -3,12 +3,38 @@ const path = require('path');
 
 const repoRoot = path.resolve(__dirname, '..');
 const packageRoot = path.join(repoRoot, 'packages/expo-modules-windows-core');
+const exampleAppRoot = path.join(repoRoot, 'apps/expo-desktop-windows-example');
 
 function readPackageFile(relativePath) {
   return fs.readFileSync(path.join(packageRoot, relativePath), 'utf8');
 }
 
 describe('Windows expo-desktop integration contract', () => {
+  it('keeps the manual Windows example app as a private workspace app', () => {
+    const rootPackageJson = require('../package.json');
+    const appPackageJson = require('../apps/expo-desktop-windows-example/package.json');
+
+    expect(rootPackageJson.workspaces).toContain('apps/*');
+    expect(appPackageJson).toMatchObject({
+      name: 'expo-desktop-windows-example',
+      private: true,
+    });
+    expect(appPackageJson.dependencies).toMatchObject({
+      '@babel/runtime': expect.any(String),
+      'expo-modules-windows-core': 'workspace:*',
+      'react-native-windows': '0.81.29',
+    });
+    expect(appPackageJson.scripts).toMatchObject({
+      windows: 'bunx react-native run-windows',
+      'autolink:windows': 'powershell -ExecutionPolicy Bypass -File ./scripts/autolink-windows.ps1',
+    });
+    expect(fs.readFileSync(path.join(exampleAppRoot, 'scripts/autolink-windows.ps1'), 'utf8')).toContain('expo-modules-windows-core autolink-windows');
+    expect(fs.existsSync(path.join(exampleAppRoot, 'modules/ExampleModule/ExampleModule.csproj'))).toBe(true);
+    expect(fs.existsSync(path.join(exampleAppRoot, 'windows/ExpoModulesWindowsCoreExample.sln'))).toBe(true);
+    expect(fs.existsSync(path.join(exampleAppRoot, 'android'))).toBe(false);
+    expect(fs.existsSync(path.join(exampleAppRoot, 'ios'))).toBe(false);
+  });
+
   it('declares the Windows native project for external app autolinking', () => {
     const config = require('../packages/expo-modules-windows-core/react-native.config');
 
@@ -29,6 +55,9 @@ describe('Windows expo-desktop integration contract', () => {
 
     expect(packageJson.peerDependencies).toMatchObject({
       'expo-desktop-modules-core': '*',
+    });
+    expect(packageJson.dependencies).toMatchObject({
+      '@babel/runtime': expect.any(String),
     });
   });
 
