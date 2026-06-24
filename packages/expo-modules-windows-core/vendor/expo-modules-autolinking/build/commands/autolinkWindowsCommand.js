@@ -139,10 +139,11 @@ function getPackagePath(searchResults, packageName) {
     const revision = searchResults[packageName];
     return revision?.path ?? null;
 }
-function createSolutionProjects(coreProject, autolinkedProject, _moduleProjects, slnDir) {
+function createSolutionProjects(coreProject, autolinkedProject, moduleProjects, slnDir) {
     return [
         (0, slnUtils_1.createSlnProject)(coreProject.assemblyName, coreProject.csprojPath, slnDir),
         (0, slnUtils_1.createSlnProject)(autolinkedProject.assemblyName, autolinkedProject.csprojPath, slnDir),
+        ...moduleProjects.map((project) => (0, slnUtils_1.createSlnProject)(project.assemblyName, project.csprojPath, slnDir)),
     ];
 }
 async function findPackageProjectPath(slnDir, vcxprojPath) {

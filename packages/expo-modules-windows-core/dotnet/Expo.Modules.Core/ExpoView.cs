@@ -1,6 +1,5 @@
 using System.Numerics;
 using Microsoft.UI.Composition;
-using Microsoft.UI.Xaml.Controls;
 using WinRT;
 
 namespace Expo.Modules.Core;
@@ -8,7 +7,7 @@ namespace Expo.Modules.Core;
 /// <summary>
 /// Base class for Expo native views on Windows.
 /// </summary>
-public abstract class ExpoView : UserControl
+public abstract class ExpoView
 {
     public AppContext AppContext { get; internal set; } = null!;
     public int ViewId { get; internal set; }
@@ -40,6 +39,10 @@ public abstract class ExpoView : UserControl
         }
     }
 
+    protected virtual void OnDisposeComposition()
+    {
+    }
+
     internal nint InitializeComposition(nint compositorPtr)
     {
         Compositor = MarshalInterface<Compositor>.FromAbi(compositorPtr);
@@ -52,5 +55,12 @@ public abstract class ExpoView : UserControl
     internal void UpdateLayout(float width, float height)
     {
         OnLayout(width, height);
+    }
+
+    internal void DisposeComposition()
+    {
+        OnDisposeComposition();
+        CompositionVisual = null;
+        Compositor = null;
     }
 }

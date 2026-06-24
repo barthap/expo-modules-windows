@@ -61,6 +61,20 @@ against the workspace package and contains a local C# Expo module sample. It is
 not the acceptance proof; the E2E smoke script remains the repeatable proof
 against a fresh expo-desktop app outside the repo.
 
+## Windows ExpoView Registration
+
+C# ExpoView component registration is enabled by default. Set the environment
+variable below to opt out when diagnosing shutdown crashes in RNW custom Fabric
+view component teardown:
+
+```powershell
+$env:EXPO_MODULES_WINDOWS_ENABLE_EXPERIMENTAL_VIEWS = '0'
+```
+
+The checked-in example renders the sample `ColorBox` ExpoView by default. If
+you need to isolate shutdown behavior, set the flag to `0` before launching the
+Windows app.
+
 ## Local Verification
 
 ```powershell

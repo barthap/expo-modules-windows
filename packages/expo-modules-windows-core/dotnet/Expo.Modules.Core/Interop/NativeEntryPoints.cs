@@ -18,7 +18,6 @@ public static class NativeEntryPoints
     private static bool _assemblyResolverRegistered;
     private static ModuleRegistry? _registry;
     private static ViewRegistry? _viewRegistry;
-    private static Microsoft.UI.Xaml.Hosting.WindowsXamlManager? _xamlManager;
     private static IntPtr _eventCallbackPtr;
     private static IntPtr _eventUserDataPtr;
 
@@ -119,7 +118,6 @@ public static class NativeEntryPoints
                 if (_viewRegistry is null)
                     return -1;
 
-                EnsureXamlRuntime();
                 *outViewId = _viewRegistry.CreateView(moduleIdx);
                 return 0;
             }
@@ -178,18 +176,7 @@ public static class NativeEntryPoints
                 if (_viewRegistry is null)
                     return 0;
 
-                var view = _viewRegistry.GetView(viewId).View;
-                var element = view.Content as Microsoft.UI.Xaml.FrameworkElement;
-                if (element is null)
-                {
-                    element = new Microsoft.UI.Xaml.Controls.ContentControl
-                    {
-                        Content = view.Content,
-                    };
-                }
-
-                var ptr = WinRT.MarshalInspectable<object>.FromManaged(element);
-                return ptr;
+                return 0;
             }
         }
         catch (Exception ex)
@@ -455,21 +442,6 @@ public static class NativeEntryPoints
     private static byte[] MakeErrorJsonBytes(string code, string message)
     {
         return TypeConverter.Serialize(new { error = code, message });
-    }
-
-    private static void EnsureXamlRuntime()
-    {
-        if (_xamlManager is not null)
-            return;
-
-        var existing = Microsoft.UI.Xaml.Hosting.WindowsXamlManager.GetForCurrentThread();
-        if (existing is not null)
-        {
-            _xamlManager = existing;
-            return;
-        }
-
-        _xamlManager = Microsoft.UI.Xaml.Hosting.WindowsXamlManager.InitializeForCurrentThread();
     }
 
     private static void RegisterAssemblyResolver(string? assemblyDirectory)

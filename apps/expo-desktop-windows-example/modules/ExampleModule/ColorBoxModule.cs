@@ -47,6 +47,17 @@ public sealed class ColorBoxView : ExpoView
         }
     }
 
+    protected override void OnDisposeComposition()
+    {
+        if (_visual is not null)
+        {
+            _visual.Brush = null;
+        }
+
+        _visual = null;
+        _brush = null;
+    }
+
     private static Windows.UI.Color ParseColor(string? value)
     {
         return value?.ToLowerInvariant() switch

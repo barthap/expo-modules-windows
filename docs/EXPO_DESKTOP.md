@@ -46,3 +46,17 @@ net9.0-windows10.0.19041.0
 Do not switch the target framework independently of RNW/expo-desktop validation;
 the acceptance criterion is the running app proof, not only a successful managed
 build.
+
+## ExpoView Registration Flag
+
+Windows ExpoView component registration is enabled by default. To disable only
+the experimental native view component registration path for local debugging,
+set:
+
+```powershell
+$env:EXPO_MODULES_WINDOWS_ENABLE_EXPERIMENTAL_VIEWS = '0'
+```
+
+Unset the variable, or set it to any value other than `0`, to use the default
+enabled behavior. This flag does not disable C# module discovery, constants, or
+function calls through `global.expo.modules`.

@@ -36,6 +36,24 @@ describe('Windows expo-desktop integration contract', () => {
     expect(fs.existsSync(path.join(exampleAppRoot, 'ios'))).toBe(false);
   });
 
+  it('renders the sample ExpoView path in the default example app', () => {
+    const appSource = fs.readFileSync(path.join(exampleAppRoot, 'src/App.tsx'), 'utf8');
+
+    expect(appSource).toContain('requireNativeViewManager');
+    expect(appSource).toContain('ExpoColorBox');
+  });
+
+  it('keeps ExpoView component registration enabled by default with an explicit opt-out', () => {
+    const viewManager = readPackageFile('windows/ExpoModulesWindowsCore/ExpoViewManager.cpp');
+
+    expect(viewManager).toContain('EXPO_MODULES_WINDOWS_ENABLE_EXPERIMENTAL_VIEWS');
+    expect(viewManager).toContain("return !(length == 1 && value[0] == L'0');");
+    expect(viewManager).toContain('EXPO_MODULES_WINDOWS_ENABLE_EXPERIMENTAL_VIEWS=0');
+    expect(viewManager.indexOf('if (!expoViewsEnabled())')).toBeLessThan(
+      viewManager.indexOf('AddViewComponent')
+    );
+  });
+
   it('declares the Windows native project for external app autolinking', () => {
     const config = require('../packages/expo-modules-windows-core/react-native.config');
 
@@ -66,6 +84,9 @@ describe('Windows expo-desktop integration contract', () => {
     const packageJson = require('../packages/expo-modules-windows-core/package.json');
     const autolinkingBin = readPackageFile('bin/expo-modules-autolinking.js');
     const vendoredBuild = readPackageFile('vendor/expo-modules-autolinking/build/index.js');
+    const windowsCommandBuild = readPackageFile(
+      'vendor/expo-modules-autolinking/build/commands/autolinkWindowsCommand.js'
+    );
     const windowsGeneratorBuild = readPackageFile(
       'vendor/expo-modules-autolinking/build/platforms/windows/generators.js'
     );
@@ -86,6 +107,8 @@ describe('Windows expo-desktop integration contract', () => {
     expect(autolinkingBin).toContain('process.argv.slice(2)');
     expect(vendoredBuild).toContain('require("./commands/autolinkWindowsCommand")');
     expect(vendoredBuild).toContain('autolinkWindowsCommand)(cli)');
+    expect(windowsCommandBuild).toContain('...moduleProjects.map');
+    expect(windowsCommandBuild).toContain('createSlnProject)(project.assemblyName, project.csprojPath, slnDir)');
     expect(windowsGeneratorBuild).toContain('AdditionalProperties="ExpoModulesCoreProject=');
     expect(windowsGeneratorBuild).toContain('DeployExpoManagedModulesToPackageLayout');
   });
@@ -148,5 +171,45 @@ describe('Windows expo-desktop integration contract', () => {
     expect(vcxproj).not.toContain(
       "$(MSBuildThisFileDirectory)node_modules\\react-native-windows"
     );
+  });
+
+  it('releases managed ExpoView composition references during native view destruction', () => {
+    const expoView = readPackageFile('dotnet/Expo.Modules.Core/ExpoView.cs');
+    const viewRegistry = readPackageFile('dotnet/Expo.Modules.Core/ViewRegistry.cs');
+    const colorBoxModule = fs.readFileSync(
+      path.join(exampleAppRoot, 'modules/ExampleModule/ColorBoxModule.cs'),
+      'utf8'
+    );
+
+    expect(expoView).toContain('internal void DisposeComposition()');
+    expect(expoView).toContain('OnDisposeComposition()');
+    expect(expoView).toContain('CompositionVisual = null;');
+    expect(expoView).toContain('Compositor = null;');
+    expect(viewRegistry).toContain('instance.View.DisposeComposition();');
+    expect(viewRegistry.indexOf('OnViewDestroysCallback')).toBeLessThan(
+      viewRegistry.indexOf('DisposeComposition()')
+    );
+    expect(colorBoxModule).toContain('protected override void OnDisposeComposition()');
+    expect(colorBoxModule).toContain('_visual = null;');
+    expect(colorBoxModule).toContain('_brush = null;');
+  });
+
+  it('uses plain composition visuals for ExpoView components instead of ContentIsland hosting', () => {
+    const viewManager = readPackageFile('windows/ExpoModulesWindowsCore/ExpoViewManager.cpp');
+
+    expect(viewManager).toContain('SetViewComponentViewInitializer');
+    expect(viewManager).toContain('SetCreateVisualHandler');
+    expect(viewManager).not.toContain('SetContentIslandComponentViewInitializer');
+    expect(viewManager).not.toContain('ContentIsland::Create');
+  });
+
+  it('keeps ExpoView composition hosting independent from XAML runtime lifetime', () => {
+    const expoView = readPackageFile('dotnet/Expo.Modules.Core/ExpoView.cs');
+    const nativeEntryPoints = readPackageFile('dotnet/Expo.Modules.Core/Interop/NativeEntryPoints.cs');
+
+    expect(expoView).not.toContain('UserControl');
+    expect(nativeEntryPoints).not.toContain('WindowsXamlManager');
+    expect(nativeEntryPoints).not.toContain('EnsureXamlRuntime');
+    expect(nativeEntryPoints).toContain('return 0;');
   });
 });

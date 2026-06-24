@@ -89,5 +89,6 @@ public sealed class ViewRegistry
         }
 
         instance.Registration.Definition.OnViewDestroysCallback?.Invoke(instance.View);
+        instance.View.DisposeComposition();
     }
 }
