@@ -20,6 +20,7 @@
         "@babel/runtime": "^7.25.0",
         "@react-native/new-app-screen": "0.81.6",
         "expo-desktop-modules-core": "^54.0.0",
+        "expo-desktop-stubs": "^54.0.0",
         "expo-modules-windows-core": "workspace:*",
         "react": "19.1.4",
         "react-native": "0.81.6",
@@ -586,6 +587,8 @@
     "execa": ["execa@5.1.1", "", { "dependencies": { "cross-spawn": "^7.0.3", "get-stream": "^6.0.0", "human-signals": "^2.1.0", "is-stream": "^2.0.0", "merge-stream": "^2.0.0", "npm-run-path": "^4.0.1", "onetime": "^5.1.2", "signal-exit": "^3.0.3", "strip-final-newline": "^2.0.0" } }, "sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg=="],
 
     "expo-desktop-modules-core": ["expo-desktop-modules-core@54.0.13", "", { "peerDependencies": { "react-native": "~0.81.0", "react-native-windows": "~0.81.0" } }, "sha512-mnCh5DSlLJnGIx2BwcBhhlWDfJqCYgAijfTCZTJD9lOZVR9nl5cWU1eIsfTK31VAu0SrGg2EQ3DbRvwgoqEk7A=="],
+
+    "expo-desktop-stubs": ["expo-desktop-stubs@54.0.13", "", { "peerDependencies": { "expo-desktop-modules-core": "^54.0.13", "react-native": "*", "react-native-windows": "*" } }, "sha512-pFwlUfIzDexdIhDoyCqE5JPT7nNss71sSKXiWimY7P3Iiy2iNRNAio99z0EwcU+OYQU3EJe2hRGUj5VQZTGcGA=="],
 
     "expo-desktop-windows-example": ["expo-desktop-windows-example@workspace:apps/expo-desktop-windows-example"],
 

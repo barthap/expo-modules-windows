@@ -21,6 +21,7 @@ describe('Windows expo-desktop integration contract', () => {
     });
     expect(appPackageJson.dependencies).toMatchObject({
       '@babel/runtime': expect.any(String),
+      'expo-desktop-stubs': expect.any(String),
       'expo-modules-windows-core': 'workspace:*',
       'react-native-windows': '0.81.29',
     });
@@ -138,14 +139,14 @@ describe('Windows expo-desktop integration contract', () => {
     );
   });
 
-  it("uses the consuming Windows solution's React Native Windows runtime", () => {
+  it("uses the consuming Windows app's React Native Windows runtime", () => {
     const vcxproj = readPackageFile('windows/ExpoModulesWindowsCore/ExpoModulesWindowsCore.vcxproj');
 
     expect(vcxproj).toContain(
-      "$([MSBuild]::GetDirectoryNameOfFileAbove($(SolutionDir), 'node_modules\\react-native-windows\\package.json'))\\node_modules\\react-native-windows\\"
+      "$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'node_modules\\react-native-windows\\package.json'))\\node_modules\\react-native-windows\\"
     );
     expect(vcxproj).not.toContain(
-      "$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'node_modules\\react-native-windows\\package.json'))"
+      "$(MSBuildThisFileDirectory)node_modules\\react-native-windows"
     );
   });
 });

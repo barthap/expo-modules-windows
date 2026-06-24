@@ -113,6 +113,9 @@
           "Microsoft.WindowsAppSDK.InteractiveExperiences": "1.8.260430001"
         }
       },
+      "expodesktopstubs": {
+        "type": "Project"
+      },
       "expomodulescore": {
         "type": "Project"
       },
@@ -122,6 +125,7 @@
       "expomoduleswindowscoreexample": {
         "type": "Project",
         "dependencies": {
+          "ExpoDesktopStubs": "[1.0.0, )",
           "ExpoModulesCore": "[1.0.0, )",
           "ExpoModulesWindowsCore": "[1.0.0, )"
         }

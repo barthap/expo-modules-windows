@@ -11,6 +11,7 @@
     "@babel/runtime": "^7.25.0",
     "@react-native/new-app-screen": "0.81.6",
     "expo-desktop-modules-core": "^54.0.0",
+    "expo-desktop-stubs": "^54.0.0",
     "expo-modules-windows-core": "workspace:*",
     "react": "19.1.4",
     "react-native": "0.81.6",

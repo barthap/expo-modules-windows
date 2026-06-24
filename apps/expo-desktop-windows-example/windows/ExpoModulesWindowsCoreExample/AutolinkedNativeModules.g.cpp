@@ -6,6 +6,9 @@
 // Includes from expo-desktop-modules-core
 #include <winrt/ExpoModulesCore.h>
 
+// Includes from expo-desktop-stubs
+#include <winrt/ExpoDesktopStubs.h>
+
 // Includes from expo-modules-windows-core
 #include <winrt/ExpoModulesWindowsCore.h>
 
@@ -16,6 +19,8 @@ void RegisterAutolinkedNativeModulePackages(winrt::Windows::Foundation::Collecti
 { 
     // IReactPackageProviders from expo-desktop-modules-core
     packageProviders.Append(winrt::ExpoModulesCore::ReactPackageProvider());
+    // IReactPackageProviders from expo-desktop-stubs
+    packageProviders.Append(winrt::ExpoDesktopStubs::ReactPackageProvider());
     // IReactPackageProviders from expo-modules-windows-core
     packageProviders.Append(winrt::ExpoModulesWindowsCore::ReactPackageProvider());
 }

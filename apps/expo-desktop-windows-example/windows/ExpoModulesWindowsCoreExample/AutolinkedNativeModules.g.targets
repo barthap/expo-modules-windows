@@ -6,6 +6,10 @@
     <ProjectReference Include="$(ProjectDir)..\..\node_modules\expo-desktop-modules-core\windows\ExpoModulesCore\ExpoModulesCore.vcxproj">
       <Project>{45CCA11B-4C7D-406D-9DCB-A823993FC653}</Project>
     </ProjectReference>
+    <!-- Projects from expo-desktop-stubs -->
+    <ProjectReference Include="$(ProjectDir)..\..\node_modules\expo-desktop-stubs\windows\ExpoDesktopStubs\ExpoDesktopStubs.vcxproj">
+      <Project>{BA199BDA-45DB-4A11-A031-79C0FFF4FB67}</Project>
+    </ProjectReference>
     <!-- Projects from expo-modules-windows-core -->
     <ProjectReference Include="$(ProjectDir)..\..\node_modules\expo-modules-windows-core\windows\ExpoModulesWindowsCore\ExpoModulesWindowsCore.vcxproj">
       <Project>{8C8BF823-DEDA-4E6D-BC18-B6C97D6D93F0}</Project>
