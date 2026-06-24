@@ -1,0 +1,20 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.updateVcxproj = exports.generateDeterministicGuid = exports.createSlnProject = exports.updateSolution = exports.readAssemblyName = exports.generateProvider = exports.generateDeployTargets = exports.generateAutolinkedCsproj = exports.resolveExtraBuildDependenciesAsync = exports.resolveModuleAsync = exports.generateModulesProviderContent = exports.generateModulesProviderAsync = void 0;
+var windows_1 = require("./windows");
+Object.defineProperty(exports, "generateModulesProviderAsync", { enumerable: true, get: function () { return windows_1.generateModulesProviderAsync; } });
+Object.defineProperty(exports, "generateModulesProviderContent", { enumerable: true, get: function () { return windows_1.generateModulesProviderContent; } });
+Object.defineProperty(exports, "resolveModuleAsync", { enumerable: true, get: function () { return windows_1.resolveModuleAsync; } });
+Object.defineProperty(exports, "resolveExtraBuildDependenciesAsync", { enumerable: true, get: function () { return windows_1.resolveExtraBuildDependenciesAsync; } });
+var generators_1 = require("./generators");
+Object.defineProperty(exports, "generateAutolinkedCsproj", { enumerable: true, get: function () { return generators_1.generateAutolinkedCsproj; } });
+Object.defineProperty(exports, "generateDeployTargets", { enumerable: true, get: function () { return generators_1.generateDeployTargets; } });
+Object.defineProperty(exports, "generateProvider", { enumerable: true, get: function () { return generators_1.generateProvider; } });
+Object.defineProperty(exports, "readAssemblyName", { enumerable: true, get: function () { return generators_1.readAssemblyName; } });
+var slnUtils_1 = require("./slnUtils");
+Object.defineProperty(exports, "updateSolution", { enumerable: true, get: function () { return slnUtils_1.updateSolution; } });
+Object.defineProperty(exports, "createSlnProject", { enumerable: true, get: function () { return slnUtils_1.createSlnProject; } });
+Object.defineProperty(exports, "generateDeterministicGuid", { enumerable: true, get: function () { return slnUtils_1.generateDeterministicGuid; } });
+var vcxprojUtils_1 = require("./vcxprojUtils");
+Object.defineProperty(exports, "updateVcxproj", { enumerable: true, get: function () { return vcxprojUtils_1.updateVcxproj; } });
+//# sourceMappingURL=index.js.map

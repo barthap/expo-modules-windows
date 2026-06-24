@@ -6,10 +6,14 @@ This document describes the build shape that exists in the repo today.
 
 Use the Visual Studio/MSBuild toolchain required by the app's
 `react-native-windows` version. During the expo-desktop fresh-app proof,
-`react-native-windows@0.81.29` required Visual Studio / MSBuild 18.6+ with
-VCTools. Visual Studio 2022 17.14 passed earlier package/autolinking checks but
-failed before build with `NoMSBuild: Could not find MSBuild with VCTools for
-Visual Studio 18.6.0 or later.`
+`react-native-windows@0.81.29` reported a Visual Studio / MSBuild 18.6+ health
+requirement, but Windows PC built the app with Visual Studio 2022 17.14 by
+setting `MinimumVisualStudioVersion=17.14.0`, `VisualStudioVersion=17.0`, and
+passing `PlatformToolset=v143`.
+
+The stock RNW CLI deploy path may still require RNW's newer PowerShell/.NET
+setup. The proof used the generated AppX layout and `Add-AppxPackage -Register`
+for deployment.
 
 ## Solution & Project Map
 
@@ -106,14 +110,16 @@ Responsibilities:
 - build-order-safe copying of the core managed outputs to `$(OutDir)\managed\`
 - package `nethost.dll` with the native library output
 
-This target supports the standalone library project.
+This target supports the native library build output. Runtime validation still
+happens in an expo-desktop app because expo-desktop owns `global.expo`.
 
 ### `ExpoModulesAutolinked.g.targets` (app project)
 
 Imported by the example app vcxproj after Expo autolinking.
 
 Responsibilities:
-- copy all managed outputs to `$(OutDir)\managed\`
+- copy all managed outputs to `$(OutDir)\managed\`, including dependency DLLs,
+  `.deps.json`, `.runtimeconfig.json`, and Debug PDBs
 - declare them as `Content` with `DeploymentContent=true` for MSIX packaging
 - include PDBs in Debug builds
 - ensure `nethost.dll` is packaged
@@ -131,10 +137,13 @@ Any runtime file that the packaged app needs must be declared as `Content` with
 
 - `nethost.dll`
 - managed assemblies in `managed\`
-- `Expo.Modules.Core.runtimeconfig.json`
+- managed dependency DLLs such as `WinRT.Runtime.dll`, `Microsoft.WinUI.dll`,
+  `Microsoft.Windows.SDK.NET.dll`, and WinAppSDK projection assemblies
+- `.deps.json` and `.runtimeconfig.json` files
 
 Without those declarations, the packaged app may fail before your own module
-code runs because the native module DLL cannot load its dependencies.
+code runs because HostFXR cannot load or initialize the managed entry-point
+assembly.
 
 ## DLL Copy Flow
 

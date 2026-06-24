@@ -134,9 +134,15 @@ std::wstring ExpoModulesWindowsCore::FindProviderAssemblyPath(const std::wstring
     namespace fs = std::filesystem;
 
     static const std::wstring kCoreAssembly = L"Expo.Modules.Core.dll";
+    static const std::wstring kAutolinkedAssembly = L"ExpoModulesAutolinked.dll";
 
     if (!fs::exists(assemblyDir)) {
         return L"";
+    }
+
+    auto autolinkedAssembly = fs::path(assemblyDir) / kAutolinkedAssembly;
+    if (fs::exists(autolinkedAssembly)) {
+        return autolinkedAssembly.wstring();
     }
 
     for (const auto& entry : fs::directory_iterator(assemblyDir)) {

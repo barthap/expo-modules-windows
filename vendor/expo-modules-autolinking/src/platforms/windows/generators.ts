@@ -39,13 +39,14 @@ export function generateAutolinkedCsproj(
   outputDir: string
 ): string {
   const coreRef = winPath.relative(outputDir, coreProject.csprojPath);
-  const moduleRefs = moduleProjects.map(
-    (m) => winPath.relative(outputDir, m.csprojPath)
-  );
+  const moduleRefs = moduleProjects.map((m) => ({
+    projectRef: winPath.relative(outputDir, m.csprojPath),
+    coreRef: winPath.relative(winPath.dirname(m.csprojPath), coreProject.csprojPath),
+  }));
 
   let refs = `    <ProjectReference Include="${coreRef}" />\n`;
   for (const ref of moduleRefs) {
-    refs += `    <ProjectReference Include="${ref}" AdditionalProperties="ExpoModulesCoreProject=${coreRef}" />\n`;
+    refs += `    <ProjectReference Include="${ref.projectRef}" AdditionalProperties="ExpoModulesCoreProject=${ref.coreRef};Platform=$(Platform)" />\n`;
   }
 
   return `<Project Sdk="Microsoft.NET.Sdk">
@@ -75,11 +76,9 @@ export function generateDeployTargets(
   netHostPropsRelPath: string,
   targetsDir?: string
 ): string {
-  const allProjects = [coreProject, autolinkedProject, ...moduleProjects];
-
   // Property definitions for each project's output directory
   let propertyLines = '';
-  for (const proj of allProjects) {
+  for (const proj of [coreProject, autolinkedProject]) {
     const propName = `_Expo_${sanitizePropName(proj.assemblyName)}_OutputDir`;
     const csprojDir = targetsDir
       ? winPath.relative(targetsDir, winPath.dirname(proj.csprojPath))
@@ -88,41 +87,47 @@ export function generateDeployTargets(
     const sep = csprojDir ? '\\' : '';
     propertyLines += `    <${propName}>${prefix}${csprojDir}${sep}bin\\$(Platform)\\$(Configuration)\\${TFM}\\</${propName}>\n`;
   }
+  for (const proj of moduleProjects) {
+    const propName = `_Expo_${sanitizePropName(proj.assemblyName)}_OutputDir`;
+    const csprojDir = targetsDir
+      ? winPath.relative(targetsDir, winPath.dirname(proj.csprojPath))
+      : winPath.dirname(proj.csprojPath);
+    const prefix = targetsDir ? '$(MSBuildThisFileDirectory)' : '';
+    const sep = csprojDir ? '\\' : '';
+    propertyLines += `    <${propName}>${prefix}${csprojDir}${sep}bin\\$(Configuration)\\${TFM}\\</${propName}>\n`;
+  }
+
+  const allProjects = [coreProject, autolinkedProject, ...moduleProjects];
 
   // Copy items for the post-build target
   let copyItems = '';
   for (const proj of allProjects) {
     const propName = `_Expo_${sanitizePropName(proj.assemblyName)}_OutputDir`;
-    copyItems += `      <_ManagedFiles Include="$(${propName})${proj.assemblyName}.dll" />\n`;
-    copyItems += `      <_ManagedFiles Include="$(${propName})${proj.assemblyName}.pdb" />\n`;
+    copyItems += `      <_ManagedFiles Include="$(${propName})*.dll" />\n`;
+    copyItems += `      <_ManagedFiles Include="$(${propName})*.deps.json" />\n`;
+    copyItems += `      <_ManagedFiles Include="$(${propName})*.runtimeconfig.json" />\n`;
+    copyItems += `      <_ManagedFiles Include="$(${propName})*.pdb" Condition="'$(Configuration)'=='Debug'" />\n`;
   }
-  // Core also needs runtimeconfig.json
-  const corePropName = `_Expo_${sanitizePropName(coreProject.assemblyName)}_OutputDir`;
-  copyItems += `      <_ManagedFiles Include="$(${corePropName})${coreProject.assemblyName}.runtimeconfig.json" />\n`;
 
   // Content declarations for MSIX packaging
   let contentItems = '';
   for (const proj of allProjects) {
     const propName = `_Expo_${sanitizePropName(proj.assemblyName)}_OutputDir`;
-    contentItems += `    <Content Include="$(${propName})${proj.assemblyName}.dll">\n`;
-    contentItems += `      <Link>managed\\${proj.assemblyName}.dll</Link>\n`;
-    contentItems += `      <DeploymentContent>true</DeploymentContent>\n`;
-    contentItems += `      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>\n`;
-    contentItems += `    </Content>\n`;
+    for (const extension of ['*.dll', '*.deps.json', '*.runtimeconfig.json']) {
+      contentItems += `    <Content Include="$(${propName})${extension}">\n`;
+      contentItems += `      <Link>managed\\%(Filename)%(Extension)</Link>\n`;
+      contentItems += `      <DeploymentContent>true</DeploymentContent>\n`;
+      contentItems += `      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>\n`;
+      contentItems += `    </Content>\n`;
+    }
   }
-  // Core runtimeconfig.json
-  contentItems += `    <Content Include="$(${corePropName})${coreProject.assemblyName}.runtimeconfig.json">\n`;
-  contentItems += `      <Link>managed\\${coreProject.assemblyName}.runtimeconfig.json</Link>\n`;
-  contentItems += `      <DeploymentContent>true</DeploymentContent>\n`;
-  contentItems += `      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>\n`;
-  contentItems += `    </Content>\n`;
 
   // PDB Content conditioned on Debug
   let pdbItems = '';
   for (const proj of allProjects) {
     const propName = `_Expo_${sanitizePropName(proj.assemblyName)}_OutputDir`;
-    pdbItems += `    <Content Include="$(${propName})${proj.assemblyName}.pdb" Condition="'$(Configuration)'=='Debug'">\n`;
-    pdbItems += `      <Link>managed\\${proj.assemblyName}.pdb</Link>\n`;
+    pdbItems += `    <Content Include="$(${propName})*.pdb" Condition="'$(Configuration)'=='Debug'">\n`;
+    pdbItems += `      <Link>managed\\%(Filename)%(Extension)</Link>\n`;
     pdbItems += `      <DeploymentContent>true</DeploymentContent>\n`;
     pdbItems += `      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>\n`;
     pdbItems += `    </Content>\n`;
@@ -162,6 +167,43 @@ ${contentItems}${pdbItems}  </ItemGroup>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+</Project>
+`;
+}
+
+/**
+ * Generate a .wapproj-side target that mirrors managed assemblies into the
+ * loose AppX layout used by RNW/expo-desktop debug deployment.
+ */
+export function generatePackageDeployTargets(appProjectName: string): string {
+  return `<!--
+  ExpoModulesAutolinked.Package.g.targets
+  Auto-generated by expo-modules-autolinking. Do not edit manually.
+  Mirrors managed assemblies into the debug AppX package layout.
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <_ExpoManagedPackageSourceDir>$(MSBuildThisFileDirectory)..\\$(Platform)\\$(Configuration)\\managed\\</_ExpoManagedPackageSourceDir>
+    <_ExpoManagedPackageOutputDir>$(MSBuildThisFileDirectory)bin\\$(Platform)\\$(Configuration)\\${appProjectName}\\managed\\</_ExpoManagedPackageOutputDir>
+  </PropertyGroup>
+
+  <Target Name="DeployExpoManagedModulesToPackageLayout"
+          AfterTargets="Build"
+          Condition="Exists('$(_ExpoManagedPackageSourceDir)')">
+    <ItemGroup>
+      <_ExpoPackageManagedFiles Include="$(_ExpoManagedPackageSourceDir)*.dll" />
+      <_ExpoPackageManagedFiles Include="$(_ExpoManagedPackageSourceDir)*.deps.json" />
+      <_ExpoPackageManagedFiles Include="$(_ExpoManagedPackageSourceDir)*.runtimeconfig.json" />
+      <_ExpoPackageManagedFiles Include="$(_ExpoManagedPackageSourceDir)*.pdb" Condition="'$(Configuration)'=='Debug'" />
+    </ItemGroup>
+    <Message Text="Copying Expo managed assemblies to $(_ExpoManagedPackageOutputDir)" Importance="high" />
+    <MakeDir Directories="$(_ExpoManagedPackageOutputDir)" />
+    <Copy SourceFiles="@(_ExpoPackageManagedFiles)"
+          DestinationFolder="$(_ExpoManagedPackageOutputDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
 `;

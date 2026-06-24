@@ -47,9 +47,9 @@ Under the hood, `expo-desktop-modules-core` installs Expo's shared JS runtime cl
 
 - **Windows 10/11** with the Visual Studio toolchain required by your
   `react-native-windows` version. Current expo-desktop fresh apps resolved to
-  RNW 0.81.29 during verification, whose health checks require Visual Studio /
-  MSBuild 18.6+ with VCTools. Visual Studio 2022 17.14 is not sufficient for
-  that generated app shape.
+  RNW 0.81.29 during verification. Windows PC built the proof app with Visual
+  Studio 2022 17.14 by setting `MinimumVisualStudioVersion=17.14.0`,
+  `VisualStudioVersion=17.0`, and passing `PlatformToolset=v143`.
 - An app created with `expo-desktop create-app`, or an RNW app that installs
   `expo-desktop-modules-core` and `expo-desktop-stubs`
 - **React Native Windows** 0.81+ (New Architecture)
@@ -156,7 +156,8 @@ bunx expo-modules-windows-core autolink-windows \
 This will:
 - Discover all packages with `expo-module.config.json` containing `"platforms": ["windows"]`
 - Generate a hub C# project with `ExpoModulesProvider.g.cs` listing all module types
-- Generate MSBuild deploy targets for build output and MSIX packaging
+- Generate MSBuild deploy targets for build output, managed dependency DLLs,
+  and MSIX packaging
 - Patch the `.sln` (add C# projects) and `.vcxproj` (add references)
 
 The command is idempotent — safe to re-run after adding or removing modules.

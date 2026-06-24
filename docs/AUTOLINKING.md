@@ -321,9 +321,10 @@ MSBuild builds MyApp.vcxproj
   → ProjectReference triggers build of ExpoModulesAutolinked.csproj
     → which transitively builds Expo.Modules.Core.csproj + all module .csproj files
   → ExpoModulesAutolinked.g.targets runs AfterTargets="Build"
-    → copies all managed DLLs to $(OutDir)\managed\
+    → copies managed DLLs, dependency DLLs, .deps.json, .runtimeconfig.json,
+      and Debug PDBs to $(OutDir)\managed\
   → MSIX packaging (wapproj) picks up Content items
-    → managed DLLs + nethost.dll appear in the AppX package
+    → managed outputs + nethost.dll appear in the AppX package
 ```
 
 At runtime, the C++ host (`ExpoModuleHost`) uses HostFXR to load the .NET runtime and calls `Expo_DiscoverModules` which reads `ExpoModulesProvider.GetModuleClasses()` to find all module types.

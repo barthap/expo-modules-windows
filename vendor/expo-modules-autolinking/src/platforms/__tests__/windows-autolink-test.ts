@@ -1,8 +1,13 @@
 import {
   generateAutolinkedCsproj,
   generateDeployTargets,
+  generatePackageDeployTargets,
   generateProvider,
 } from '../windows/generators';
+import {
+  createSolutionProjects,
+  ensurePackageTargetsImport,
+} from '../../commands/autolinkWindowsCommand';
 import {
   updateSolution,
   createSlnProject,
@@ -60,7 +65,9 @@ describe('generateAutolinkedCsproj', () => {
     );
 
     expect(result).toContain('ProjectReference Include="..\\..\\..\\modules\\LocalCounter\\LocalCounter.csproj"');
-    expect(result).toContain('AdditionalProperties="ExpoModulesCoreProject=..\\..\\..\\..\\dotnet\\Expo.Modules.Core\\Expo.Modules.Core.csproj"');
+    expect(result).toContain(
+      'AdditionalProperties="ExpoModulesCoreProject=..\\..\\..\\dotnet\\Expo.Modules.Core\\Expo.Modules.Core.csproj;Platform=$(Platform)"'
+    );
   });
 
   it('uses backslash path separators', () => {
@@ -91,18 +98,56 @@ describe('generateDeployTargets', () => {
       { csprojPath: 'C:\\repo\\modules\\Bat\\Bat.csproj', assemblyName: 'ExpoBattery' },
     ];
     const result = generateDeployTargets(core, autolinked, modules, '..\\..\\NetHost.props');
-    expect(result).toContain('Expo.Modules.Core.dll');
-    expect(result).toContain('ExpoModulesAutolinked.dll');
-    expect(result).toContain('ExpoBattery.dll');
-    expect(result).toContain('Expo.Modules.Core.runtimeconfig.json');
+    expect(result).toContain('$(_Expo_Expo_Modules_Core_OutputDir)*.dll');
+    expect(result).toContain('$(_Expo_ExpoModulesAutolinked_OutputDir)*.dll');
+    expect(result).toContain('$(_Expo_ExpoBattery_OutputDir)*.dll');
+    expect(result).toContain('*.deps.json');
+    expect(result).toContain('*.runtimeconfig.json');
     expect(result).toContain('NetHost.props');
     expect(result).toContain("Condition=\"'$(Configuration)'=='Debug'\"");
   });
 
+  it('deploys managed dependency files beside the Expo assemblies', () => {
+    const result = generateDeployTargets(core, autolinked, [], '..\\..\\NetHost.props');
+
+    expect(result).toContain('<_ManagedFiles Include="$(_Expo_Expo_Modules_Core_OutputDir)*.dll" />');
+    expect(result).toContain('<_ManagedFiles Include="$(_Expo_Expo_Modules_Core_OutputDir)*.deps.json" />');
+    expect(result).toContain(
+      '<_ManagedFiles Include="$(_Expo_Expo_Modules_Core_OutputDir)*.runtimeconfig.json" />'
+    );
+    expect(result).toContain('<Content Include="$(_Expo_Expo_Modules_Core_OutputDir)*.dll">');
+    expect(result).toContain('<Content Include="$(_Expo_Expo_Modules_Core_OutputDir)*.deps.json">');
+    expect(result).toContain('<Content Include="$(_Expo_Expo_Modules_Core_OutputDir)*.runtimeconfig.json">');
+    expect(result).toContain('<Link>managed\\%(Filename)%(Extension)</Link>');
+  });
+
+  it('uses SDK-style output paths for local module assemblies', () => {
+    const modules: AutolinkedProject[] = [
+      { csprojPath: 'C:\\repo\\modules\\Bat\\Bat.csproj', assemblyName: 'ExpoBattery' },
+    ];
+    const result = generateDeployTargets(
+      core,
+      autolinked,
+      modules,
+      '..\\..\\NetHost.props',
+      'C:\\repo\\app'
+    );
+
+    expect(result).toContain(
+      '<_Expo_Expo_Modules_Core_OutputDir>$(MSBuildThisFileDirectory)..\\dotnet\\Expo.Modules.Core\\bin\\$(Platform)\\$(Configuration)\\net9.0-windows10.0.19041.0\\</_Expo_Expo_Modules_Core_OutputDir>'
+    );
+    expect(result).toContain(
+      '<_Expo_ExpoModulesAutolinked_OutputDir>$(MSBuildThisFileDirectory)ExpoModulesAutolinked\\bin\\$(Platform)\\$(Configuration)\\net9.0-windows10.0.19041.0\\</_Expo_ExpoModulesAutolinked_OutputDir>'
+    );
+    expect(result).toContain(
+      '<_Expo_ExpoBattery_OutputDir>$(MSBuildThisFileDirectory)..\\modules\\Bat\\bin\\$(Configuration)\\net9.0-windows10.0.19041.0\\</_Expo_ExpoBattery_OutputDir>'
+    );
+  });
+
   it('generates targets with zero modules', () => {
     const result = generateDeployTargets(core, autolinked, [], '..\\..\\NetHost.props');
-    expect(result).toContain('Expo.Modules.Core.dll');
-    expect(result).toContain('ExpoModulesAutolinked.dll');
+    expect(result).toContain('$(_Expo_Expo_Modules_Core_OutputDir)*.dll');
+    expect(result).toContain('$(_Expo_ExpoModulesAutolinked_OutputDir)*.dll');
     expect(result).not.toContain('ExpoBattery');
   });
 
@@ -110,6 +155,20 @@ describe('generateDeployTargets', () => {
     const result = generateDeployTargets(core, autolinked, [], '..\\..\\NetHost.props');
     expect(result).toContain('_Expo_Expo_Modules_Core_OutputDir');
     expect(result).not.toContain('_Expo_Expo.Modules.Core_OutputDir');
+  });
+});
+
+describe('generatePackageDeployTargets', () => {
+  it('copies managed assemblies into the loose AppX package layout', () => {
+    const result = generatePackageDeployTargets('MyApp');
+
+    expect(result).toContain('DeployExpoManagedModulesToPackageLayout');
+    expect(result).toContain('..\\$(Platform)\\$(Configuration)\\managed\\');
+    expect(result).toContain('bin\\$(Platform)\\$(Configuration)\\MyApp\\managed\\');
+    expect(result).toContain('<_ExpoPackageManagedFiles Include="$(_ExpoManagedPackageSourceDir)*.dll" />');
+    expect(result).toContain(
+      '<_ExpoPackageManagedFiles Include="$(_ExpoManagedPackageSourceDir)*.runtimeconfig.json" />'
+    );
   });
 });
 
@@ -269,6 +328,56 @@ describe('slnUtils', () => {
 });
 
 // ─── vcxprojUtils tests ───
+
+describe('createSolutionProjects', () => {
+  it('adds only the managed bridge and core projects to the solution', () => {
+    const core: AutolinkedProject = {
+      csprojPath: 'C:\\repo\\app\\node_modules\\expo-modules-windows-core\\dotnet\\Expo.Modules.Core\\Expo.Modules.Core.csproj',
+      assemblyName: 'Expo.Modules.Core',
+    };
+    const autolinked: AutolinkedProject = {
+      csprojPath: 'C:\\repo\\app\\windows\\MyApp\\ExpoModulesAutolinked\\ExpoModulesAutolinked.csproj',
+      assemblyName: 'ExpoModulesAutolinked',
+    };
+    const modules: AutolinkedProject[] = [
+      {
+        csprojPath: 'C:\\repo\\app\\modules\\LocalCounter\\LocalCounterModule.csproj',
+        assemblyName: 'LocalCounterModule',
+      },
+    ];
+
+    const projects = createSolutionProjects(core, autolinked, modules, 'C:\\repo\\app\\windows');
+
+    expect(projects.map((p) => p.name)).toEqual([
+      'Expo.Modules.Core',
+      'ExpoModulesAutolinked',
+    ]);
+    expect(projects.some((p) => p.relativePath.includes('LocalCounterModule.csproj'))).toBe(false);
+  });
+});
+
+describe('ensurePackageTargetsImport', () => {
+  const waproj = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<Project ToolsVersion="Current" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">',
+    '  <Import Project="$(WapProjPath)\\Microsoft.DesktopBridge.targets"></Import>',
+    '</Project>',
+    '',
+  ].join('\r\n');
+
+  it('adds the package deploy target import', () => {
+    const result = ensurePackageTargetsImport(waproj, 'ExpoModulesAutolinked.Package.g.targets');
+
+    expect(result).toContain('<Import Project="ExpoModulesAutolinked.Package.g.targets" />');
+  });
+
+  it('does not duplicate an existing package deploy target import', () => {
+    const first = ensurePackageTargetsImport(waproj, 'ExpoModulesAutolinked.Package.g.targets');
+    const second = ensurePackageTargetsImport(first, 'ExpoModulesAutolinked.Package.g.targets');
+
+    expect(second.split('ExpoModulesAutolinked.Package.g.targets').length - 1).toBe(1);
+  });
+});
 
 describe('vcxprojUtils', () => {
   const minimalVcxproj = [

@@ -6,10 +6,20 @@ This document describes how expo-modules-windows-core composes with the
 ## Current Fresh-App Toolchain Note
 
 The current expo-desktop fresh-app proof resolved
-`react-native-windows@0.81.29`. That app shape requires Visual Studio / MSBuild
-18.6+ with VCTools before `react-native run-windows` can build. On BKLOCEK-PC,
-Visual Studio 2022 17.14 was enough to run package and autolinking checks but
-not enough to build the generated RNW app.
+`react-native-windows@0.81.29`. On Windows PC the app built with Visual Studio
+Community 2022 `17.14.37012.4` by setting:
+
+```powershell
+$env:MinimumVisualStudioVersion = '17.14.0'
+$env:VisualStudioVersion = '17.0'
+bunx react-native run-windows --no-packager --no-launch --no-deploy --logging `
+  --sln windows\CodexProofExpoModulesWindowsCore.sln `
+  --proj windows\CodexProofExpoModulesWindowsCore\CodexProofExpoModulesWindowsCore.vcxproj `
+  --msbuildprops PlatformToolset=v143
+```
+
+The RNW CLI deploy step still expects its PowerShell tool chain; the proof used
+the generated AppX layout and `Add-AppxPackage -Register` to launch the app.
 
 ## Background
 

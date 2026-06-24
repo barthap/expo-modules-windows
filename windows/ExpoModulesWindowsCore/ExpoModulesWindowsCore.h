@@ -15,7 +15,11 @@
 namespace winrt::ExpoModulesWindowsCore
 {
 
+#ifdef REACT_EAGER_TURBO_MODULE
+REACT_EAGER_TURBO_MODULE(ExpoModulesWindowsCore)
+#else
 REACT_MODULE(ExpoModulesWindowsCore)
+#endif
 struct ExpoModulesWindowsCore
 {
 #if __has_include("codegen/NativeExpoModulesWindowsCoreSpec.g.h")

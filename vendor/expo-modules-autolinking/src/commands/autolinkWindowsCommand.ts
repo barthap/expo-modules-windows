@@ -13,6 +13,7 @@ import type { ModuleDescriptorWindows, SearchResults } from '../types';
 import {
   generateAutolinkedCsproj,
   generateDeployTargets,
+  generatePackageDeployTargets,
   generateProvider,
   readAssemblyName,
   AutolinkedProject,
@@ -128,12 +129,31 @@ export function autolinkWindowsCommand(cli: commander.CommanderStatic) {
         const targetsPath = path.join(vcxprojDir, 'ExpoModulesAutolinked.g.targets');
         await writeIfChanged(targetsPath, targetsContent);
 
-        // 9. Collect stale refs from the vcxproj (old manual references to remove)
+        // 9. Generate and import package-layout deploy targets when a .wapproj is present
+        const packageProjectPath = await findPackageProjectPath(slnDir, vcxprojPath);
+        let packageTargetsPath: string | null = null;
+        if (packageProjectPath) {
+          const packageProjectDir = path.dirname(packageProjectPath);
+          packageTargetsPath = path.join(packageProjectDir, 'ExpoModulesAutolinked.Package.g.targets');
+          const appProjectName = path.basename(vcxprojPath, path.extname(vcxprojPath));
+          await writeIfChanged(packageTargetsPath, generatePackageDeployTargets(appProjectName));
+
+          const packageProjectContent = await fs.promises.readFile(packageProjectPath, 'utf8');
+          const packageTargetsRelPath = path
+            .relative(packageProjectDir, packageTargetsPath)
+            .replace(/\//g, '\\');
+          await writeIfChanged(
+            packageProjectPath,
+            ensurePackageTargetsImport(packageProjectContent, packageTargetsRelPath)
+          );
+        }
+
+        // 10. Collect stale refs from the vcxproj (old manual references to remove)
         const vcxprojContent = await fs.promises.readFile(vcxprojPath, 'utf8');
         const staleRefs = findStaleProjectReferences(vcxprojContent, moduleProjects);
         const staleImports = findStaleImports(vcxprojContent);
 
-        // 10. Update .vcxproj
+        // 11. Update .vcxproj
         const autolinkedCsprojRelPath = path
           .relative(vcxprojDir, autolinkedCsprojPath)
           .replace(/\//g, '\\');
@@ -150,25 +170,27 @@ export function autolinkWindowsCommand(cli: commander.CommanderStatic) {
         );
         await writeIfChanged(vcxprojPath, updatedVcxproj);
 
-        // 11. Update .sln
+        // 12. Update .sln
         const slnContent = await fs.promises.readFile(slnPath, 'utf8');
-        const slnProjects: SlnProject[] = [
-          createSlnProject(coreProject.assemblyName, coreProject.csprojPath, slnDir),
-          createSlnProject(autolinkedProject.assemblyName, autolinkedProject.csprojPath, slnDir),
-          ...moduleProjects.map((m) => {
-            const name = path.basename(m.csprojPath, '.csproj');
-            return createSlnProject(name, m.csprojPath, slnDir);
-          }),
-        ];
+        const slnProjects = createSolutionProjects(
+          coreProject,
+          autolinkedProject,
+          moduleProjects,
+          slnDir
+        );
 
         const updatedSln = updateSolution(slnContent, slnProjects);
         await writeIfChanged(slnPath, updatedSln);
 
-        // 12. Summary
+        // 13. Summary
         console.log('\nAutolink complete:');
         console.log(`  Generated: ${autolinkedCsprojPath}`);
         console.log(`  Generated: ${providerPath}`);
         console.log(`  Generated: ${targetsPath}`);
+        if (packageTargetsPath && packageProjectPath) {
+          console.log(`  Generated: ${packageTargetsPath}`);
+          console.log(`  Updated:   ${packageProjectPath}`);
+        }
         console.log(`  Updated:   ${vcxprojPath}`);
         console.log(`  Updated:   ${slnPath}`);
       }
@@ -184,6 +206,101 @@ function getPackagePath(
 ): string | null {
   const revision = searchResults[packageName];
   return revision?.path ?? null;
+}
+
+export function createSolutionProjects(
+  coreProject: AutolinkedProject,
+  autolinkedProject: AutolinkedProject,
+  _moduleProjects: AutolinkedProject[],
+  slnDir: string
+): SlnProject[] {
+  return [
+    createSlnProject(coreProject.assemblyName, coreProject.csprojPath, slnDir),
+    createSlnProject(autolinkedProject.assemblyName, autolinkedProject.csprojPath, slnDir),
+  ];
+}
+
+async function findPackageProjectPath(slnDir: string, vcxprojPath: string): Promise<string | null> {
+  const appProjectName = path.basename(vcxprojPath, path.extname(vcxprojPath));
+  const conventionalPath = path.join(
+    path.dirname(vcxprojPath),
+    '..',
+    `${appProjectName}.Package`,
+    `${appProjectName}.Package.wapproj`
+  );
+  if (fs.existsSync(conventionalPath)) {
+    return conventionalPath;
+  }
+
+  const candidates = await findFilesByExtension(slnDir, '.wapproj');
+  const normalizedVcxprojPath = path.normalize(vcxprojPath).toLowerCase();
+  for (const candidate of candidates) {
+    const content = await fs.promises.readFile(candidate, 'utf8').catch(() => '');
+    const candidateDir = path.dirname(candidate);
+    const projectRefs = [...content.matchAll(/<ProjectReference\s+Include="([^"]+\.vcxproj)"/gi)];
+    const entryPoint = content.match(
+      /<EntryPointProjectUniqueName>\s*([^<]+\.vcxproj)\s*<\/EntryPointProjectUniqueName>/i
+    );
+    const refs = [
+      ...projectRefs.map((match) => match[1]),
+      ...(entryPoint?.[1] ? [entryPoint[1]] : []),
+    ];
+
+    if (
+      refs.some(
+        (ref) =>
+          path.normalize(path.resolve(candidateDir, ref)).toLowerCase() === normalizedVcxprojPath
+      )
+    ) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+async function findFilesByExtension(root: string, extension: string): Promise<string[]> {
+  const result: string[] = [];
+  const entries = await fs.promises.readdir(root, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (entry.name === 'node_modules' || entry.name === 'bin' || entry.name === 'obj') {
+      continue;
+    }
+
+    const fullPath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      result.push(...(await findFilesByExtension(fullPath, extension)));
+    } else if (entry.isFile() && entry.name.toLowerCase().endsWith(extension)) {
+      result.push(fullPath);
+    }
+  }
+  return result;
+}
+
+export function ensurePackageTargetsImport(
+  packageProjectContent: string,
+  packageTargetsRelPath: string
+): string {
+  const eol = packageProjectContent.includes('\r\n') ? '\r\n' : '\n';
+  const normalizedPath = packageTargetsRelPath.replace(/\\/g, '/').toLowerCase();
+  const lines = packageProjectContent.split(/\r?\n/);
+
+  if (
+    lines.some((line) => {
+      const normalizedLine = line.replace(/\\/g, '/').toLowerCase();
+      return normalizedLine.includes('<import') && normalizedLine.includes(normalizedPath);
+    })
+  ) {
+    return packageProjectContent;
+  }
+
+  const closeProjectIdx = findLastIndex(lines, (line) => line.trim() === '</Project>');
+  if (closeProjectIdx < 0) {
+    return packageProjectContent;
+  }
+
+  lines.splice(closeProjectIdx, 0, `  <Import Project="${packageTargetsRelPath}" />`);
+  return lines.join(eol);
 }
 
 /**
@@ -291,6 +408,15 @@ function findStaleImports(vcxprojContent: string): string[] {
     }
   }
   return stale;
+}
+
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean): number {
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (predicate(items[i])) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 /**

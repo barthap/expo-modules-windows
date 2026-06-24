@@ -29,7 +29,8 @@ static bool resolveExport(
     const wchar_t* assemblyPath,
     const wchar_t* typeName,
     const wchar_t* methodName,
-    FnPtr* outFn)
+    FnPtr* outFn,
+    std::string& lastError)
 {
     int rc = loadAssembly(
         assemblyPath,
@@ -40,6 +41,13 @@ static bool resolveExport(
         reinterpret_cast<void**>(outFn));
 
     if (rc != 0 || !*outFn) {
+        int methodLen = lstrlenW(methodName);
+        int utf8Len = WideCharToMultiByte(CP_UTF8, 0, methodName, methodLen, nullptr, 0, nullptr, nullptr);
+        std::string methodUtf8(utf8Len > 0 ? utf8Len : 0, '\0');
+        if (utf8Len > 0) {
+            WideCharToMultiByte(CP_UTF8, 0, methodName, methodLen, methodUtf8.data(), utf8Len, nullptr, nullptr);
+        }
+        lastError = "ExpoModuleHost: failed to resolve " + methodUtf8 + " (rc=" + std::to_string(rc) + ")";
         OutputDebugStringW((std::wstring(L"ExpoModuleHost: failed to resolve ") +
                            methodName + L"\n").c_str());
         return false;
@@ -117,22 +125,24 @@ bool ExpoModuleHost::ResolveExports(const std::wstring& assemblyPath) {
     auto loadAssembly = reinterpret_cast<load_assembly_and_get_function_pointer_fn>(m_loadAssemblyFn);
     const wchar_t* tn = kEntryPointsTypeName;
 
+    m_lastError.clear();
     bool ok = true;
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_Initialize", &m_expoInitialize);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_GetModuleCount", &m_expoGetModuleCount);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_GetModuleDefinitions", &m_expoGetModuleDefinitions);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_InvokeSync", &m_expoInvokeSync);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_InvokeAsync", &m_expoInvokeAsync);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_EmitEvent_SetCallback", &m_expoSetEventCallback);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_FreeBuffer", &m_expoFreeBuffer);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_CreateView", &m_expoCreateView);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_DestroyView", &m_expoDestroyView);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_UpdateViewProps", &m_expoUpdateViewProps);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_InitializeViewComposition", &m_expoInitializeViewComposition);
-    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_UpdateViewLayout", &m_expoUpdateViewLayout);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_Initialize", &m_expoInitialize, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_GetModuleCount", &m_expoGetModuleCount, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_GetModuleDefinitions", &m_expoGetModuleDefinitions, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_InvokeSync", &m_expoInvokeSync, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_InvokeAsync", &m_expoInvokeAsync, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_EmitEvent_SetCallback", &m_expoSetEventCallback, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_FreeBuffer", &m_expoFreeBuffer, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_CreateView", &m_expoCreateView, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_DestroyView", &m_expoDestroyView, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_UpdateViewProps", &m_expoUpdateViewProps, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_InitializeViewComposition", &m_expoInitializeViewComposition, m_lastError);
+    ok = ok && resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_UpdateViewLayout", &m_expoUpdateViewLayout, m_lastError);
 
     // Expo_DiscoverModules is optional — don't fail if absent
-    resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_DiscoverModules", &m_expoDiscoverModules);
+    std::string optionalResolveError;
+    resolveExport(loadAssembly, assemblyPath.c_str(), tn, L"Expo_DiscoverModules", &m_expoDiscoverModules, optionalResolveError);
 
     return ok;
 }
@@ -207,7 +217,8 @@ void ExpoModuleHost::Initialize(const std::wstring& assemblyDir,
 
     // Step 3: Resolve C# exports
     if (!ResolveExports(assemblyPath)) {
-        throw std::runtime_error("ExpoModuleHost: failed to resolve C# exports");
+        throw std::runtime_error(
+            m_lastError.empty() ? "ExpoModuleHost: failed to resolve C# exports" : m_lastError);
     }
 
     // Step 4: Discover modules from provider assembly, or use empty list

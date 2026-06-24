@@ -26,6 +26,7 @@
     "cpp",
     "*.podspec",
     "bin",
+    "scripts",
     "react-native.config.js",
     "!ios/build",
     "!android/build",
@@ -52,7 +53,8 @@
     "test": "jest",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib"
+    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "test:e2e:windows-localcounter": "powershell -ExecutionPolicy Bypass -File scripts/e2e/windows-localcounter-smoke.ps1"
   },
   "keywords": [
     "react-native",

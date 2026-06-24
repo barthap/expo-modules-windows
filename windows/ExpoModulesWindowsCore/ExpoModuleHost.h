@@ -102,12 +102,14 @@ private:
     bool LoadHostFxr();
     bool InitializeRuntime(const std::wstring& runtimeConfigPath);
     bool ResolveExports(const std::wstring& assemblyPath);
+    const std::string& LastError() const { return m_lastError; }
     void ParseModuleDefinitions(const uint8_t* json, int len);
     static std::wstring FindAssemblyDir();
     static std::wstring FindProviderAssemblyPath(const std::wstring& assemblyDir);
 
     // State
     bool m_initialized = false;
+    std::string m_lastError;
     void* m_loadAssemblyFn = nullptr;  // load_assembly_and_get_function_pointer_fn
 
     // Resolved C# exports
