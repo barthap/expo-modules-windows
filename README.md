@@ -1,5 +1,12 @@
 # expo-modules-windows-core
 
+> [!WARNING]
+> **This repository is deprecated and no longer maintained.**
+>
+> It is replaced by [`barthap/expo-modules-dotnet`](https://github.com/barthap/expo-modules-dotnet). The new repository is not Windows-only. It runs .NET modules on Windows, macOS, Android and iOS, and it includes autolinking.
+
+---
+
 Windows support for Expo-style C# modules in apps created with
 `expo-desktop`.
 
